@@ -17,6 +17,21 @@ const money = (n) => "$" + n.toFixed(2);
 
 const selected = new Set();
 
+const SENT_ORDERS_KEY = "kencarter_sent_orders";
+
+function loadSentOrders() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(SENT_ORDERS_KEY) || "[]"));
+  } catch {
+    return new Set();
+  }
+}
+
+let sentOrders = loadSentOrders();
+
+const orderSignature = (email, titles) =>
+  email.toLowerCase() + "|" + titles.join(",");
+
 const $ = (id) => document.getElementById(id);
 
 const grid = $("grid");
@@ -172,6 +187,15 @@ async function submitOrder(e) {
   }
 
   const titles = BEATS.filter((b) => selected.has(b.id)).map((b) => b.title);
+
+  const signature = orderSignature(email, titles);
+  if (sentOrders.has(signature)) {
+    finishSubmit(btn);
+    errorEl.textContent = "THIS ORDER WAS ALREADY SENT \u2014 DUPLICATES ARE BLOCKED.";
+    errorEl.hidden = false;
+    return;
+  }
+
   const order = {
     _subject: `NEW BEAT ORDER \u2014 ${n} BEAT${n > 1 ? "S" : ""} \u2014 ${money(total)}`,
     _replyto: email,
@@ -199,6 +223,10 @@ async function submitOrder(e) {
         "Request failed";
       throw Object.assign(new Error(msg), { status: res.status });
     }
+    sentOrders.add(signature);
+    try {
+      localStorage.setItem(SENT_ORDERS_KEY, JSON.stringify(Array.from(sentOrders)));
+    } catch {}
     showSuccess(email, titles, total);
   } catch (err) {
     console.error("Order submission failed:", err);
@@ -237,6 +265,10 @@ function showSuccess(email, titles, total) {
   render();
   cartbar.disabled = true;
   $("cartbar-label").textContent = "CART (0)";
+  setTimeout(() => {
+    resetDrawer();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, 1800);
 }
 
 function resetDrawer() {

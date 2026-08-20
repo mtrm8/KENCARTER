@@ -73,16 +73,16 @@ button {
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1px;
-  background: var(--hairline);
   border-top: 1px solid var(--hairline);
-  border-bottom: 1px solid var(--hairline);
+  border-left: 1px solid var(--hairline);
 }
 
 .card {
   background: var(--white);
   display: flex;
   flex-direction: column;
+  border-right: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
 }
 
 .card__media {
