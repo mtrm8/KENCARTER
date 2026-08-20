@@ -194,6 +194,7 @@ async function submitOrder(e) {
     if (!res.ok) {
       const msg =
         (data && data.errors && data.errors[0] && data.errors[0].message) ||
+        (data && data.error) ||
         (data && data.message) ||
         "Request failed";
       throw new Error(msg);
