@@ -197,7 +197,7 @@ function submitOrder(e) {
     Date: new Date().toLocaleString()
   };
 
-  finishOrder();
+  finishOrder(email, titles, total);
 
   fetch(FORMSPREE_ENDPOINT, {
     method: "POST",
@@ -249,20 +249,27 @@ function showOrderError(err, order) {
   orderErrorTimer = setTimeout(() => (el.hidden = true), 12000);
 }
 
-function finishOrder() {
+function finishOrder(email, titles, total) {
   selected.clear();
   render();
-  resetDrawer();
-  window.scrollTo({ top: 0 });
+  $("order-form").hidden = true;
+  document.querySelector(".totals").hidden = true;
+  $("cart-items").hidden = true;
+  $("cart-empty").hidden = true;
+  $("success-summary").textContent =
+    `${titles.join(", ")} \u2014 ${money(total)} \u2014 FILES WILL BE SENT TO ${email.toUpperCase()}`;
+  $("success").hidden = false;
 }
 
 function resetDrawer() {
+  const fromSuccess = !$("success").hidden;
   $("success").hidden = true;
   $("order-form").hidden = false;
   document.querySelector(".totals").hidden = false;
   $("cart-items").hidden = false;
   $("email").value = "";
   closeDrawer();
+  if (fromSuccess) window.scrollTo({ top: 0 });
 }
 
 buildTicker();
