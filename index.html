@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KEN CARTER — BEATS</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="ticker" aria-hidden="true">
+    <div class="ticker__track">
+      <span></span><span></span>
+    </div>
+  </div>
+
+  <header class="header">
+    <img src="assets/logo.jpg" alt="KEN CARTER" class="header__logo">
+  </header>
+
+  <main>
+    <section class="grid" id="grid"></section>
+  </main>
+
+  <footer class="footer">
+    <p>KEN CARTER &copy; 2026 &mdash; ALL BEATS $14.95 &mdash; BUY 2 GET THE 3RD FREE</p>
+  </footer>
+
+  <button class="cartbar" id="cartbar" disabled>
+    <span id="cartbar-label">CART (0)</span>
+    <span class="cartbar__cta">CHECKOUT &rarr;</span>
+  </button>
+
+  <div class="backdrop" id="backdrop" hidden></div>
+
+  <aside class="drawer" id="drawer" aria-hidden="true">
+    <div class="drawer__head">
+      <span>CART (<span id="drawer-count">0</span>)</span>
+      <button class="drawer__close" id="close" aria-label="Close">&times;</button>
+    </div>
+
+    <div class="drawer__body" id="drawer-body">
+      <ul class="cart-items" id="cart-items"></ul>
+      <p class="cart-empty" id="cart-empty">NO BEATS SELECTED.</p>
+
+      <dl class="totals">
+        <div><dt>SUBTOTAL</dt><dd id="t-subtotal">$0.00</dd></div>
+        <div class="totals__discount" id="t-discount-row" hidden><dt>BUY 2 GET 3RD FREE</dt><dd id="t-discount">&minus;$0.00</dd></div>
+        <div class="totals__grand"><dt>TOTAL</dt><dd id="t-total">$0.00</dd></div>
+      </dl>
+
+      <form class="order-form" id="order-form" novalidate>
+        <label class="order-form__label" for="email">EMAIL FOR DELIVERY</label>
+        <input class="order-form__input" type="email" id="email" name="email"
+               placeholder="YOU@EMAIL.COM" autocomplete="email" required>
+        <p class="order-form__error" id="form-error" hidden></p>
+        <button class="btn btn--solid" type="submit" id="submit-btn">SUBMIT ORDER</button>
+      </form>
+
+      <div class="success" id="success" hidden>
+        <h2>ORDER RECEIVED</h2>
+        <p id="success-summary"></p>
+        <p class="success__note">A CONFIRMATION WILL ARRIVE AT YOUR EMAIL. KEEP AN EYE ON YOUR INBOX FOR THE FILES.</p>
+        <button class="btn btn--ghost" id="continue-btn">CONTINUE SHOPPING</button>
+      </div>
+    </div>
+  </aside>
+
+  <script src="script.js"></script>
+</body>
+</html>
