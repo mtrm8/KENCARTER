@@ -8,7 +8,7 @@ const BEATS = [
   { id: "beat2", title: "BEAT 02", img: "assets/beat2.png" },
   { id: "beat3", title: "BEAT 03", img: "assets/beat3.png" },
   { id: "beat4", title: "BEAT 04", img: "assets/beat4.png" },
-  { id: "beat5", title: "BEAT 05", img: "assets/beat5.png" }
+  { id: "beat5", title: "BEAT 05", img: "assets/beat5.png", tag: "LAST RELEASE" }
 ];
 
 const TICKER_TEXT = "KEN CARTER \u2014 ALL BEATS $14.95 \u2014 BUY 2 GET THE 3RD FREE \u2014 ";
@@ -52,7 +52,7 @@ function buildGrid() {
     card.innerHTML = `
       <div class="card__media">
         <img src="${beat.img}" alt="${beat.title}" loading="lazy">
-        <span class="card__tag">$${PRICE.toFixed(2)}</span>
+        ${beat.tag ? `<span class="card__tag">${beat.tag}</span>` : ""}
       </div>
       <div class="card__info">
         <div>
