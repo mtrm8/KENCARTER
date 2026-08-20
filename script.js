@@ -227,7 +227,7 @@ async function submitOrder(e) {
     try {
       localStorage.setItem(SENT_ORDERS_KEY, JSON.stringify(Array.from(sentOrders)));
     } catch {}
-    showSuccess(email, titles, total);
+    finishOrder();
   } catch (err) {
     console.error("Order submission failed:", err);
     let msg = "COULD NOT SEND ORDER";
@@ -255,20 +255,11 @@ async function submitOrder(e) {
   }
 }
 
-function showSuccess(email, titles, total) {
-  $("order-form").hidden = true;
-  $("cart-items").hidden = true;
-  document.querySelector(".totals").hidden = true;
-  $("success-summary").textContent = `${titles.length} BEAT${titles.length > 1 ? "S" : ""} \u2014 ${money(total)} \u2014 FILES WILL BE SENT TO ${email.toUpperCase()}`;
-  $("success").hidden = false;
+function finishOrder() {
   selected.clear();
   render();
-  cartbar.disabled = true;
-  $("cartbar-label").textContent = "CART (0)";
-  setTimeout(() => {
-    resetDrawer();
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, 1800);
+  resetDrawer();
+  window.scrollTo({ top: 0 });
 }
 
 function resetDrawer() {
