@@ -197,15 +197,21 @@ async function submitOrder(e) {
         (data && data.error) ||
         (data && data.message) ||
         "Request failed";
-      throw new Error(msg);
+      throw Object.assign(new Error(msg), { status: res.status });
     }
     showSuccess(email, titles, total);
   } catch (err) {
-    errorEl.textContent = "COULD NOT SEND ORDER";
+    console.error("Order submission failed:", err);
+    let msg = "COULD NOT SEND ORDER";
     if (err.message && err.message !== "Request failed") {
-      errorEl.textContent += ` \u2014 ${err.message.toUpperCase()}`;
+      msg += ` \u2014 ${err.message.toUpperCase()}`;
     }
-    errorEl.textContent += ". ";
+    if (err.status) msg += ` (ERROR ${err.status})`;
+    if (location.protocol === "file:") {
+      msg += " \u2014 YOU ARE VIEWING A LOCAL FILE: SERVE THE SITE (HTTP://LOCALHOST:8000) AND TRY AGAIN";
+    }
+    msg += ". ";
+    errorEl.textContent = msg;
     const mailto = document.createElement("a");
     mailto.href =
       `mailto:${OWNER_EMAIL}?subject=${encodeURIComponent(order._subject)}` +
@@ -225,7 +231,7 @@ function showSuccess(email, titles, total) {
   $("order-form").hidden = true;
   $("cart-items").hidden = true;
   document.querySelector(".totals").hidden = true;
-  $("success-summary").textContent = `${titles.length} BEAT${titles.length > 1 ? "S" : ""} \u2014 ${money(total)} \u2014 CONFIRMATION TO ${email.toUpperCase()}`;
+  $("success-summary").textContent = `${titles.length} BEAT${titles.length > 1 ? "S" : ""} \u2014 ${money(total)} \u2014 FILES WILL BE SENT TO ${email.toUpperCase()}`;
   $("success").hidden = false;
   selected.clear();
   render();
