@@ -1,3 +1,4 @@
+const FORMSPREE_ENDPOINT = "https://formspree.io/f/xwleyqpa";
 const OWNER_EMAIL = "kencarterr8@gmail.com";
 
 const PRICE = 14.95;
@@ -130,8 +131,8 @@ function finishSubmit(btn) {
   btn.textContent = "SUBMIT ORDER";
 }
 
-function ownerEmailIsSet() {
-  return !OWNER_EMAIL.includes("REPLACE_WITH");
+function endpointIsSet() {
+  return /formspree\.io\/f\/[a-z0-9]+/i.test(FORMSPREE_ENDPOINT);
 }
 
 async function submitOrder(e) {
@@ -162,10 +163,10 @@ async function submitOrder(e) {
   btn.disabled = true;
   btn.textContent = "SENDING\u2026";
 
-  if (OWNER_EMAIL.includes("REPLACE_WITH")) {
+  if (!endpointIsSet()) {
     finishSubmit(btn);
     emailInput.classList.add("invalid");
-    errorEl.textContent = "STORE OWNER: OPEN SCRIPT.JS AND REPLACE THE PLACEHOLDER ON LINE 1 WITH YOUR REAL EMAIL ADDRESS.";
+    errorEl.textContent = "STORE OWNER: OPEN SCRIPT.JS AND SET YOUR FORMSPREE ENDPOINT ON LINE 1.";
     errorEl.hidden = false;
     return;
   }
@@ -173,7 +174,7 @@ async function submitOrder(e) {
   const titles = BEATS.filter((b) => selected.has(b.id)).map((b) => b.title);
   const order = {
     _subject: `NEW BEAT ORDER \u2014 ${n} BEAT${n > 1 ? "S" : ""} \u2014 ${money(total)}`,
-    _template: "table",
+    _replyto: email,
     Customer_Email: email,
     Beats: titles.join(", "),
     Items: String(n),
@@ -184,14 +185,18 @@ async function submitOrder(e) {
   };
 
   try {
-    const res = await fetch(`https://formsubmit.co/ajax/${OWNER_EMAIL}`, {
+    const res = await fetch(FORMSPREE_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(order)
     });
     const data = await res.json().catch(() => null);
-    if (!res.ok || !data || data.success === "false" || data.success === false) {
-      throw new Error(data && data.message ? data.message : "Request failed");
+    if (!res.ok) {
+      const msg =
+        (data && data.errors && data.errors[0] && data.errors[0].message) ||
+        (data && data.message) ||
+        "Request failed";
+      throw new Error(msg);
     }
     showSuccess(email, titles, total);
   } catch (err) {
@@ -240,7 +245,7 @@ buildTicker();
 buildGrid();
 render();
 
-if (!ownerEmailIsSet()) $("config-warning").hidden = false;
+if (!endpointIsSet()) $("config-warning").hidden = false;
 
 cartbar.addEventListener("click", openDrawer);
 $("close").addEventListener("click", resetDrawer);
