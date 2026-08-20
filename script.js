@@ -1,4 +1,4 @@
-const OWNER_EMAIL = "REPLACE_WITH_YOUR_EMAIL@gmail.com";
+const OWNER_EMAIL = "kencarterr8@gmail.com";
 
 const PRICE = 14.95;
 
@@ -125,6 +125,15 @@ function closeDrawer() {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function finishSubmit(btn) {
+  btn.disabled = false;
+  btn.textContent = "SUBMIT ORDER";
+}
+
+function ownerEmailIsSet() {
+  return !OWNER_EMAIL.includes("REPLACE_WITH");
+}
+
 async function submitOrder(e) {
   e.preventDefault();
 
@@ -153,6 +162,14 @@ async function submitOrder(e) {
   btn.disabled = true;
   btn.textContent = "SENDING\u2026";
 
+  if (OWNER_EMAIL.includes("REPLACE_WITH")) {
+    finishSubmit(btn);
+    emailInput.classList.add("invalid");
+    errorEl.textContent = "STORE OWNER: OPEN SCRIPT.JS AND REPLACE THE PLACEHOLDER ON LINE 1 WITH YOUR REAL EMAIL ADDRESS.";
+    errorEl.hidden = false;
+    return;
+  }
+
   const titles = BEATS.filter((b) => selected.has(b.id)).map((b) => b.title);
   const order = {
     _subject: `NEW BEAT ORDER \u2014 ${n} BEAT${n > 1 ? "S" : ""} \u2014 ${money(total)}`,
@@ -172,10 +189,17 @@ async function submitOrder(e) {
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(order)
     });
-    if (!res.ok) throw new Error("Request failed");
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data || data.success === "false" || data.success === false) {
+      throw new Error(data && data.message ? data.message : "Request failed");
+    }
     showSuccess(email, titles, total);
   } catch (err) {
-    errorEl.textContent = "COULD NOT SEND ORDER. ";
+    errorEl.textContent = "COULD NOT SEND ORDER";
+    if (err.message && err.message !== "Request failed") {
+      errorEl.textContent += ` \u2014 ${err.message.toUpperCase()}`;
+    }
+    errorEl.textContent += ". ";
     const mailto = document.createElement("a");
     mailto.href =
       `mailto:${OWNER_EMAIL}?subject=${encodeURIComponent(order._subject)}` +
@@ -215,6 +239,8 @@ function resetDrawer() {
 buildTicker();
 buildGrid();
 render();
+
+if (!ownerEmailIsSet()) $("config-warning").hidden = false;
 
 cartbar.addEventListener("click", openDrawer);
 $("close").addEventListener("click", resetDrawer);

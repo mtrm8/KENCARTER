@@ -415,7 +415,17 @@ button {
 }
 
 @media (max-width: 600px) {
-  .header {
+.config-warning {
+  border-bottom: 1px solid var(--black);
+  background: var(--black);
+  color: var(--white);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  padding: 10px 16px;
+}
+
+.header {
     padding: 36px 16px 32px;
   }
   .grid {
