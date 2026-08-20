@@ -8,12 +8,35 @@ const BEATS = [
   { id: "beat2", title: "BEAT 02", img: "assets/beat2.png" },
   { id: "beat3", title: "BEAT 03", img: "assets/beat3.png" },
   { id: "beat4", title: "BEAT 04", img: "assets/beat4.png" },
-  { id: "beat5", title: "BEAT 05", img: "assets/beat5.png", tag: "LAST RELEASE" }
+  { id: "beat5", title: "BEAT 05", img: "assets/beat5.png", tag: "LAST RELEASE" },
+  { id: "beat6", title: "BEAT 06", img: "assets/beat6.png", tag: "NEW", releaseAt: "2026-08-21T20:00:00" }
 ];
 
 const TICKER_TEXT = "KEN CARTER \u2014 ALL BEATS $14.95 \u2014 BUY 2 GET THE 3RD FREE \u2014 ";
 
 const money = (n) => "$" + n.toFixed(2);
+
+const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+
+const releaseDate = (b) => (b.releaseAt ? new Date(b.releaseAt) : null);
+const isReleased = (b) => !b.releaseAt || Date.now() >= releaseDate(b).getTime();
+
+const pad = (n) => String(n).padStart(2, "0");
+
+function dropLabel(d) {
+  const h24 = d.getHours();
+  const h12 = h24 % 12 || 12;
+  return `${MONTHS[d.getMonth()]} ${d.getDate()} \u2014 ${h12}:${pad(d.getMinutes())} ${h24 >= 12 ? "PM" : "AM"}`;
+}
+
+function formatRemaining(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const days = Math.floor(s / 86400);
+  const h = pad(Math.floor((s % 86400) / 3600));
+  const m = pad(Math.floor((s % 3600) / 60));
+  const sec = pad(s % 60);
+  return (days > 0 ? days + "D " : "") + `${h}:${m}:${sec}`;
+}
 
 const selected = new Set();
 
@@ -44,34 +67,85 @@ function buildTicker() {
   document.querySelectorAll(".ticker__track span").forEach((s) => (s.textContent = line));
 }
 
+function cardInner(beat) {
+  const released = isReleased(beat);
+  return `
+    <div class="card__media">
+      <img src="${beat.img}" alt="${beat.title}" loading="lazy">
+      ${released
+        ? beat.tag
+          ? `<span class="card__tag">${beat.tag}</span>`
+          : ""
+        : `<div class="card__countdown">
+             <span class="card__countdown-label">DROPS ${dropLabel(releaseDate(beat))}</span>
+             <span class="card__countdown-timer" id="countdown-${beat.id}">${formatRemaining(releaseDate(beat) - Date.now())}</span>
+           </div>`}
+    </div>
+    <div class="card__info">
+      <div>
+        <div class="card__name">${beat.title}</div>
+        <div class="card__price">${money(PRICE)}</div>
+      </div>
+      ${released
+        ? `<button class="card__btn" data-id="${beat.id}">ADD</button>`
+        : `<button class="card__btn" data-id="${beat.id}" disabled>SOON</button>`}
+    </div>`;
+}
+
 function buildGrid() {
   BEATS.forEach((beat) => {
     const card = document.createElement("article");
-    card.className = "card";
+    card.className = "card" + (isReleased(beat) ? "" : " card--locked");
     card.id = "card-" + beat.id;
-    card.innerHTML = `
-      <div class="card__media">
-        <img src="${beat.img}" alt="${beat.title}" loading="lazy">
-        ${beat.tag ? `<span class="card__tag">${beat.tag}</span>` : ""}
-      </div>
-      <div class="card__info">
-        <div>
-          <div class="card__name">${beat.title}</div>
-          <div class="card__price">${money(PRICE)}</div>
-        </div>
-        <button class="card__btn" data-id="${beat.id}">ADD</button>
-      </div>`;
+    card.innerHTML = cardInner(beat);
     grid.appendChild(card);
   });
 
   grid.addEventListener("click", (e) => {
     const btn = e.target.closest(".card__btn");
-    if (!btn) return;
+    if (!btn || btn.disabled) return;
     toggle(btn.dataset.id);
   });
 }
 
+let countdownTimer = null;
+
+function checkReleases() {
+  let allLive = true;
+  BEATS.forEach((beat) => {
+    const card = $("card-" + beat.id);
+    if (!card || !card.classList.contains("card--locked")) return;
+    const remaining = releaseDate(beat).getTime() - Date.now();
+    if (remaining <= 0) {
+      unlockBeat(beat);
+      return;
+    }
+    allLive = false;
+    const el = $("countdown-" + beat.id);
+    if (el) el.textContent = formatRemaining(remaining);
+  });
+  if (allLive && countdownTimer) {
+    clearInterval(countdownTimer);
+    countdownTimer = null;
+  }
+}
+
+function unlockBeat(beat) {
+  const card = $("card-" + beat.id);
+  if (!card) return;
+  card.classList.remove("card--locked");
+  card.innerHTML = cardInner(beat);
+  render();
+}
+
+function startCountdowns() {
+  if (!BEATS.some((b) => !isReleased(b))) return;
+  countdownTimer = setInterval(checkReleases, 1000);
+}
+
 function toggle(id) {
+  const beat = BEATS.find((b) => b.id === id);
+  if (!beat || !isReleased(beat)) return;
   if (selected.has(id)) selected.delete(id);
   else selected.add(id);
   render();
@@ -94,6 +168,7 @@ function render() {
   const { n, subtotal, discount, total } = totals();
 
   BEATS.forEach((b) => {
+    if (!isReleased(b)) return;
     const card = $("card-" + b.id);
     const btn = card.querySelector(".card__btn");
     const on = selected.has(b.id);
@@ -275,6 +350,7 @@ function resetDrawer() {
 buildTicker();
 buildGrid();
 render();
+startCountdowns();
 
 if (!endpointIsSet()) $("config-warning").hidden = false;
 
