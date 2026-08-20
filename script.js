@@ -141,16 +141,11 @@ function closeDrawer() {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function finishSubmit(btn) {
-  btn.disabled = false;
-  btn.textContent = "SUBMIT ORDER";
-}
-
 function endpointIsSet() {
   return /formspree\.io\/f\/[a-z0-9]+/i.test(FORMSPREE_ENDPOINT);
 }
 
-async function submitOrder(e) {
+function submitOrder(e) {
   e.preventDefault();
 
   const emailInput = $("email");
@@ -174,12 +169,7 @@ async function submitOrder(e) {
     return;
   }
 
-  const btn = $("submit-btn");
-  btn.disabled = true;
-  btn.textContent = "SENDING\u2026";
-
   if (!endpointIsSet()) {
-    finishSubmit(btn);
     emailInput.classList.add("invalid");
     errorEl.textContent = "STORE OWNER: OPEN SCRIPT.JS AND SET YOUR FORMSPREE ENDPOINT ON LINE 1.";
     errorEl.hidden = false;
@@ -190,7 +180,6 @@ async function submitOrder(e) {
 
   const signature = orderSignature(email, titles);
   if (sentOrders.has(signature)) {
-    finishSubmit(btn);
     errorEl.textContent = "THIS ORDER WAS ALREADY SENT \u2014 DUPLICATES ARE BLOCKED.";
     errorEl.hidden = false;
     return;
@@ -208,51 +197,56 @@ async function submitOrder(e) {
     Date: new Date().toLocaleString()
   };
 
-  try {
-    const res = await fetch(FORMSPREE_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(order)
-    });
-    const data = await res.json().catch(() => null);
-    if (!res.ok) {
-      const msg =
-        (data && data.errors && data.errors[0] && data.errors[0].message) ||
-        (data && data.error) ||
-        (data && data.message) ||
-        "Request failed";
-      throw Object.assign(new Error(msg), { status: res.status });
-    }
-    sentOrders.add(signature);
-    try {
-      localStorage.setItem(SENT_ORDERS_KEY, JSON.stringify(Array.from(sentOrders)));
-    } catch {}
-    finishOrder();
-  } catch (err) {
-    console.error("Order submission failed:", err);
-    let msg = "COULD NOT SEND ORDER";
-    if (err.message && err.message !== "Request failed") {
-      msg += ` \u2014 ${err.message.toUpperCase()}`;
-    }
-    if (err.status) msg += ` (ERROR ${err.status})`;
-    if (location.protocol === "file:") {
-      msg += " \u2014 YOU ARE VIEWING A LOCAL FILE: SERVE THE SITE (HTTP://LOCALHOST:8000) AND TRY AGAIN";
-    }
-    msg += ". ";
-    errorEl.textContent = msg;
-    const mailto = document.createElement("a");
-    mailto.href =
-      `mailto:${OWNER_EMAIL}?subject=${encodeURIComponent(order._subject)}` +
-      `&body=${encodeURIComponent(
-        `Email: ${email}\nBeats: ${titles.join(", ")}\nItems: ${n}\nSubtotal: ${order.Subtotal}\nDiscount: ${order.Discount}\nTotal: ${order.Total}`
-      )}`;
-    mailto.textContent = "TAP HERE TO SEND BY EMAIL INSTEAD.";
-    errorEl.appendChild(mailto);
-    errorEl.hidden = false;
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "SUBMIT ORDER";
+  finishOrder();
+
+  fetch(FORMSPREE_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(order)
+  })
+    .then(async (res) => {
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        const msg =
+          (data && data.errors && data.errors[0] && data.errors[0].message) ||
+          (data && data.error) ||
+          (data && data.message) ||
+          "Request failed";
+        throw Object.assign(new Error(msg), { status: res.status });
+      }
+      sentOrders.add(signature);
+      try {
+        localStorage.setItem(SENT_ORDERS_KEY, JSON.stringify(Array.from(sentOrders)));
+      } catch {}
+    })
+    .catch((err) => showOrderError(err, order));
+}
+
+let orderErrorTimer;
+
+function showOrderError(err, order) {
+  console.error("Order submission failed:", err);
+  const el = $("order-error");
+  el.textContent = "ORDER SEND FAILED";
+  if (err.message && err.message !== "Request failed") {
+    el.textContent += ` \u2014 ${err.message.toUpperCase()}`;
   }
+  if (err.status) el.textContent += ` (ERROR ${err.status})`;
+  if (location.protocol === "file:") {
+    el.textContent += " \u2014 SERVE THE SITE VIA HTTP://LOCALHOST:8000";
+  }
+  el.textContent += " \u2014 ";
+  const mailto = document.createElement("a");
+  mailto.href =
+    `mailto:${OWNER_EMAIL}?subject=${encodeURIComponent(order._subject)}` +
+    `&body=${encodeURIComponent(
+      `Email: ${order.Customer_Email}\nBeats: ${order.Beats}\nItems: ${order.Items}\nSubtotal: ${order.Subtotal}\nDiscount: ${order.Discount}\nTotal: ${order.Total}`
+    )}`;
+  mailto.textContent = "TAP HERE TO SEND BY EMAIL INSTEAD";
+  el.appendChild(mailto);
+  el.hidden = false;
+  clearTimeout(orderErrorTimer);
+  orderErrorTimer = setTimeout(() => (el.hidden = true), 12000);
 }
 
 function finishOrder() {
