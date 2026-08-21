@@ -1,4 +1,5 @@
-const FORMSPREE_ENDPOINT = "https://formspree.io/f/xwleyqpa";
+const STATICFORMS_ENDPOINT = "https://api.staticforms.dev/submit";
+const STATICFORMS_API_KEY = "sf_2ec200d6c01b3b10f688085e";
 const OWNER_EMAIL = "kencarterr8@gmail.com";
 
 const PRICE = 14.95;
@@ -233,7 +234,7 @@ function closeDrawer() {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function endpointIsSet() {
-  return /formspree\.io\/f\/[a-z0-9]+/i.test(FORMSPREE_ENDPOINT);
+  return /^sf_[a-z0-9]+$/i.test(STATICFORMS_API_KEY);
 }
 
 let sending = false;
@@ -266,7 +267,7 @@ function submitOrder(e) {
 
   if (!endpointIsSet()) {
     emailInput.classList.add("invalid");
-    errorEl.textContent = "STORE OWNER: OPEN SCRIPT.JS AND SET YOUR FORMSPREE ENDPOINT ON LINE 1.";
+    errorEl.textContent = "STORE OWNER: OPEN SCRIPT.JS AND SET YOUR STATIC FORMS API KEY ON LINE 2.";
     errorEl.hidden = false;
     return;
   }
@@ -281,9 +282,9 @@ function submitOrder(e) {
   }
 
   const order = {
-    _subject: `NEW BEAT ORDER \u2014 ${n} BEAT${n > 1 ? "S" : ""} \u2014 ${money(total)}`,
-    _replyto: email,
-    Customer_Email: email,
+    apiKey: STATICFORMS_API_KEY,
+    email,
+    message: `NEW BEAT ORDER \u2014 ${n} BEAT${n > 1 ? "S" : ""} \u2014 ${money(total)} \u2014 ${titles.join(", ")}`,
     Beats: titles.join(", "),
     Items: String(n),
     Subtotal: money(subtotal),
@@ -297,14 +298,14 @@ function submitOrder(e) {
   submitBtn.textContent = "SENDING...";
   markOrderSent(signature);
 
-  fetch(FORMSPREE_ENDPOINT, {
+  fetch(STATICFORMS_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify(order)
   })
     .then(async (res) => {
       const data = await res.json().catch(() => null);
-      if (!res.ok) {
+      if (!res.ok || (data && data.success === false)) {
         const msg =
           (data && data.errors && data.errors[0] && data.errors[0].message) ||
           (data && data.error) ||
