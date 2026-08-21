@@ -449,20 +449,6 @@ button {
   margin-bottom: 16px;
 }
 
-.success p {
-  font-size: 12px;
-  line-height: 1.7;
-  margin-bottom: 12px;
-}
-
-.success__note {
-  color: var(--gray);
-}
-
-.success .btn {
-  margin-top: 12px;
-}
-
 .success--clean {
   margin: auto 0;
   text-align: center;
@@ -472,12 +458,6 @@ button {
 .success--clean h2 {
   font-size: 26px;
   letter-spacing: 0.1em;
-}
-
-.success--clean .success__note {
-  max-width: 300px;
-  margin-left: auto;
-  margin-right: auto;
 }
 
 @media (max-width: 600px) {

@@ -312,7 +312,7 @@ function submitOrder(e) {
           "Request failed";
         throw Object.assign(new Error(msg), { status: res.status });
       }
-      finishOrder(email, titles, total);
+      finishOrder();
     })
     .catch((err) => {
       markOrderUnsent(signature);
@@ -352,16 +352,13 @@ function showOrderError(err, order) {
   orderErrorTimer = setTimeout(() => (el.hidden = true), 12000);
 }
 
-function finishOrder(email, titles, total) {
+function finishOrder() {
   selected.clear();
   render();
   document.querySelector(".totals").hidden = true;
   $("cart-items").hidden = true;
   $("cart-empty").hidden = true;
   $("head-cart").hidden = true;
-  $("head-received").hidden = false;
-  $("success-summary").textContent =
-    `${titles.join(", ")} \u2014 ${money(total)} \u2014 FILES WILL BE SENT TO ${email.toUpperCase()}`;
   const success = $("success");
   success.classList.add("success--clean");
   success.hidden = false;
@@ -372,12 +369,10 @@ function resetDrawer() {
   const success = $("success");
   success.hidden = true;
   success.classList.remove("success--clean");
-  $("order-form").hidden = false;
   document.querySelector(".totals").hidden = false;
   $("cart-items").hidden = false;
   $("email").value = "";
   $("head-cart").hidden = false;
-  $("head-received").hidden = true;
   closeDrawer();
   if (fromSuccess) window.scrollTo({ top: 0 });
 }
@@ -391,11 +386,10 @@ if (!endpointIsSet()) $("config-warning").hidden = false;
 
 cartbar.addEventListener("click", openDrawer);
 $("close").addEventListener("click", resetDrawer);
-backdrop.addEventListener("click", closeDrawer);
-document.addEventListener("keydown", (e) => e.key === "Escape" && closeDrawer());
+backdrop.addEventListener("click", resetDrawer);
+document.addEventListener("keydown", (e) => e.key === "Escape" && resetDrawer());
 $("cart-items").addEventListener("click", (e) => {
   const btn = e.target.closest(".cart-items__remove");
   if (btn) removeItem(btn.dataset.id);
 });
 $("order-form").addEventListener("submit", submitOrder);
-$("continue-btn").addEventListener("click", resetDrawer);
