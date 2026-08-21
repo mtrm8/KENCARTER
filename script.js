@@ -55,6 +55,22 @@ let sentOrders = loadSentOrders();
 const orderSignature = (email, titles) =>
   email.toLowerCase() + "|" + titles.join(",");
 
+function persistSentOrders() {
+  try {
+    localStorage.setItem(SENT_ORDERS_KEY, JSON.stringify(Array.from(sentOrders)));
+  } catch {}
+}
+
+function markOrderSent(signature) {
+  sentOrders.add(signature);
+  persistSentOrders();
+}
+
+function markOrderUnsent(signature) {
+  sentOrders.delete(signature);
+  persistSentOrders();
+}
+
 const $ = (id) => document.getElementById(id);
 
 const grid = $("grid");
@@ -220,11 +236,15 @@ function endpointIsSet() {
   return /formspree\.io\/f\/[a-z0-9]+/i.test(FORMSPREE_ENDPOINT);
 }
 
+let sending = false;
+
 function submitOrder(e) {
   e.preventDefault();
+  if (sending) return;
 
   const emailInput = $("email");
   const errorEl = $("form-error");
+  const submitBtn = $("submit-btn");
   const email = emailInput.value.trim();
   const { n, subtotal, discount, total } = totals();
 
@@ -272,7 +292,10 @@ function submitOrder(e) {
     Date: new Date().toLocaleString()
   };
 
-  finishOrder(email, titles, total);
+  sending = true;
+  submitBtn.disabled = true;
+  submitBtn.textContent = "SENDING...";
+  markOrderSent(signature);
 
   fetch(FORMSPREE_ENDPOINT, {
     method: "POST",
@@ -289,12 +312,17 @@ function submitOrder(e) {
           "Request failed";
         throw Object.assign(new Error(msg), { status: res.status });
       }
-      sentOrders.add(signature);
-      try {
-        localStorage.setItem(SENT_ORDERS_KEY, JSON.stringify(Array.from(sentOrders)));
-      } catch {}
+      finishOrder(email, titles, total);
     })
-    .catch((err) => showOrderError(err, order));
+    .catch((err) => {
+      markOrderUnsent(signature);
+      showOrderError(err, order);
+    })
+    .finally(() => {
+      sending = false;
+      submitBtn.disabled = false;
+      submitBtn.textContent = "SUBMIT ORDER";
+    });
 }
 
 let orderErrorTimer;
