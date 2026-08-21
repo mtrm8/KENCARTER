@@ -87,7 +87,7 @@ function cardInner(beat) {
   const released = isReleased(beat);
   return `
     <div class="card__media">
-      <img src="${beat.img}" alt="${beat.title}" loading="lazy">
+      <img src="${beat.img}" alt="${beat.title}" decoding="async">
       ${released
         ? beat.tag
           ? `<span class="card__tag">${beat.tag}</span>`
@@ -359,18 +359,26 @@ function finishOrder(email, titles, total) {
   document.querySelector(".totals").hidden = true;
   $("cart-items").hidden = true;
   $("cart-empty").hidden = true;
+  $("head-cart").hidden = true;
+  $("head-received").hidden = false;
   $("success-summary").textContent =
     `${titles.join(", ")} \u2014 ${money(total)} \u2014 FILES WILL BE SENT TO ${email.toUpperCase()}`;
-  $("success").hidden = false;
+  const success = $("success");
+  success.classList.add("success--clean");
+  success.hidden = false;
 }
 
 function resetDrawer() {
   const fromSuccess = !$("success").hidden;
-  $("success").hidden = true;
+  const success = $("success");
+  success.hidden = true;
+  success.classList.remove("success--clean");
   $("order-form").hidden = false;
   document.querySelector(".totals").hidden = false;
   $("cart-items").hidden = false;
   $("email").value = "";
+  $("head-cart").hidden = false;
+  $("head-received").hidden = true;
   closeDrawer();
   if (fromSuccess) window.scrollTo({ top: 0 });
 }

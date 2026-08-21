@@ -459,6 +459,23 @@ button {
   margin-top: 12px;
 }
 
+.success--clean {
+  margin: auto 0;
+  text-align: center;
+  padding: 48px 12px;
+}
+
+.success--clean h2 {
+  font-size: 26px;
+  letter-spacing: 0.1em;
+}
+
+.success--clean .success__note {
+  max-width: 300px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 @media (max-width: 600px) {
 .config-warning {
   border-bottom: 1px solid var(--black);

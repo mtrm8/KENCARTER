@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>KEN CARTER — BEATS</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="preload" as="image" href="assets/logo.jpg">
+  <link rel="preload" as="image" href="assets/beat1.jpg">
+  <link rel="preload" as="image" href="assets/beat2.png">
+  <link rel="preload" as="image" href="assets/beat3.png">
+  <link rel="preload" as="image" href="assets/beat4.png">
+  <link rel="preload" as="image" href="assets/beat5.png">
+  <link rel="preload" as="image" href="assets/beat6.png">
 </head>
 <body>
 
@@ -41,7 +48,10 @@
 
   <aside class="drawer" id="drawer" aria-hidden="true">
     <div class="drawer__head">
-      <span>CART (<span id="drawer-count">0</span>)</span>
+      <span>
+        <span id="head-cart">CART (<span id="drawer-count">0</span>)</span>
+        <span id="head-received" hidden>ORDER RECEIVED</span>
+      </span>
       <button class="drawer__close" id="close" aria-label="Close">&times;</button>
     </div>
 
