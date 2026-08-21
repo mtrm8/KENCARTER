@@ -355,7 +355,6 @@ function showOrderError(err, order) {
 function finishOrder(email, titles, total) {
   selected.clear();
   render();
-  $("order-form").hidden = true;
   document.querySelector(".totals").hidden = true;
   $("cart-items").hidden = true;
   $("cart-empty").hidden = true;
