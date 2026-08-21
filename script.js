@@ -1,5 +1,5 @@
 const STATICFORMS_ENDPOINT = "https://api.staticforms.dev/submit";
-const STATICFORMS_API_KEY = "sf_2ec200d6c01b3b10f688085e";
+const STATICFORMS_API_KEY = "sf_7dbd34559d35443370eded7e";
 const OWNER_EMAIL = "kencarterr8@gmail.com";
 
 const PRICE = 14.95;
@@ -41,7 +41,7 @@ function formatRemaining(ms) {
 
 const selected = new Set();
 
-const SENT_ORDERS_KEY = "sf_2ec200d6c01b3b10f688085e";
+const SENT_ORDERS_KEY = "kencarter_sent_orders";
 
 function loadSentOrders() {
   try {
