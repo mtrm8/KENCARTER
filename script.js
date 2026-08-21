@@ -5,12 +5,12 @@ const OWNER_EMAIL = "kencarterr8@gmail.com";
 const PRICE = 14.95;
 
 const BEATS = [
-  { id: "beat1", title: "BEAT 01", img: "assets/beat1.jpg" },
-  { id: "beat2", title: "BEAT 02", img: "assets/beat2.png" },
-  { id: "beat3", title: "BEAT 03", img: "assets/beat3.png" },
-  { id: "beat4", title: "BEAT 04", img: "assets/beat4.png" },
-  { id: "beat5", title: "BEAT 05", img: "assets/beat5.png", tag: "LAST RELEASE" },
-  { id: "beat6", title: "BEAT 06", img: "assets/beat6.png", tag: "NEW", releaseAt: "2026-08-21T20:00:00" }
+  { id: "beat1", title: "BEAT 01", img: "assets/beat1.jpg?v=2" },
+  { id: "beat2", title: "BEAT 02", img: "assets/beat2.jpg?v=2" },
+  { id: "beat3", title: "BEAT 03", img: "assets/beat3.jpg?v=2" },
+  { id: "beat4", title: "BEAT 04", img: "assets/beat4.jpg?v=2" },
+  { id: "beat5", title: "BEAT 05", img: "assets/beat5.jpg?v=2", tag: "LAST RELEASE" },
+  { id: "beat6", title: "BEAT 06", img: "assets/beat6.jpg?v=2", tag: "NEW", releaseAt: "2026-08-21T20:00:00" }
 ];
 
 const TICKER_TEXT = "KEN CARTER \u2014 ALL BEATS $14.95 \u2014 BUY 2 GET THE 3RD FREE \u2014 ";
@@ -88,7 +88,7 @@ function cardInner(beat) {
   const released = isReleased(beat);
   return `
     <div class="card__media">
-      <img src="${beat.img}" alt="${beat.title}" decoding="async">
+      <img src="${beat.img}" alt="${beat.title}" decoding="async" fetchpriority="high">
       ${released
         ? beat.tag
           ? `<span class="card__tag">${beat.tag}</span>`
