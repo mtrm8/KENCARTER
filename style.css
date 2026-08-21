@@ -425,49 +425,11 @@ button {
   color: var(--black);
 }
 
-.btn--ghost {
-  background: var(--white);
-  color: var(--black);
-}
-
-.btn--ghost:hover {
-  background: var(--black);
-  color: var(--white);
-}
-
 .btn[disabled] {
   opacity: 0.4;
   cursor: wait;
 }
 
-.success h2 {
-  font-size: 20px;
-  margin-bottom: 16px;
-}
-
-.success__note {
-  font-size: 12px;
-  line-height: 1.7;
-  color: var(--gray);
-}
-
-.success--clean {
-  margin: auto 0;
-  text-align: center;
-  padding: 48px 12px;
-}
-
-.success--clean h2 {
-  font-size: 26px;
-  letter-spacing: 0.1em;
-}
-
-.success--clean .success__note {
-  max-width: 300px;
-  margin: 16px auto 0;
-}
-
-@media (max-width: 600px) {
 .config-warning {
   border-bottom: 1px solid var(--black);
   background: var(--black);
@@ -478,7 +440,28 @@ button {
   padding: 10px 16px;
 }
 
-.header {
+.success {
+  margin: auto 0;
+  padding: 48px 12px;
+  text-align: center;
+}
+
+.success h2 {
+  font-size: 26px;
+  letter-spacing: 0.1em;
+  margin-bottom: 16px;
+}
+
+.success__note {
+  max-width: 300px;
+  margin: 16px auto 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--gray);
+}
+
+@media (max-width: 600px) {
+  .header {
     padding: 36px 16px 32px;
   }
   .grid {

@@ -360,16 +360,12 @@ function finishOrder() {
   $("cart-items").hidden = true;
   $("cart-empty").hidden = true;
   $("head-cart").hidden = true;
-  const success = $("success");
-  success.classList.add("success--clean");
-  success.hidden = false;
+  $("success").hidden = false;
 }
 
 function resetDrawer() {
   const fromSuccess = !$("success").hidden;
-  const success = $("success");
-  success.hidden = true;
-  success.classList.remove("success--clean");
+  $("success").hidden = true;
   document.querySelector(".totals").hidden = false;
   $("cart-items").hidden = false;
   $("email").value = "";
