@@ -242,10 +242,6 @@ button {
   cursor: not-allowed;
 }
 
-.cartbar:not([disabled]):hover .cartbar__cta {
-  text-decoration: underline;
-}
-
 .backdrop {
   position: fixed;
   inset: 0;
@@ -449,6 +445,12 @@ button {
   margin-bottom: 16px;
 }
 
+.success__note {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--gray);
+}
+
 .success--clean {
   margin: auto 0;
   text-align: center;
@@ -458,6 +460,11 @@ button {
 .success--clean h2 {
   font-size: 26px;
   letter-spacing: 0.1em;
+}
+
+.success--clean .success__note {
+  max-width: 300px;
+  margin: 16px auto 0;
 }
 
 @media (max-width: 600px) {
