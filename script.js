@@ -40,7 +40,7 @@ function formatRemaining(ms) {
 
 const selected = new Set();
 
-const SENT_ORDERS_KEY = "kencarter_sent_orders";
+const SENT_ORDERS_KEY = "sf_2ec200d6c01b3b10f688085e";
 
 function loadSentOrders() {
   try {
