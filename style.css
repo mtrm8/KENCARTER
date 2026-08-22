@@ -17,6 +17,7 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  background: var(--black);
 }
 
 body {
@@ -148,13 +149,6 @@ button {
 .card--selected .card__btn {
   background: var(--black);
   color: var(--white);
-}
-
-.card--selected .card__media::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border: 2px solid var(--black);
 }
 
 .card--locked .card__media img {
