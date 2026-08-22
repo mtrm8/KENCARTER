@@ -70,7 +70,6 @@ button {
 .header__logo {
   width: min(340px, 70vw);
   height: auto;
-  filter: grayscale(100%);
   mix-blend-mode: multiply;
 }
 
@@ -100,7 +99,6 @@ button {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: grayscale(100%);
 }
 
 .card__tag {
@@ -307,7 +305,6 @@ button {
   width: 52px;
   height: 52px;
   object-fit: cover;
-  filter: grayscale(100%);
   border: 1px solid var(--black);
 }
 
