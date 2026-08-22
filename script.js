@@ -9,8 +9,9 @@ const BEATS = [
   { id: "beat2", title: "BEAT 02", img: "assets/beat2.jpg?v=2" },
   { id: "beat3", title: "BEAT 03", img: "assets/beat3.jpg?v=2" },
   { id: "beat4", title: "BEAT 04", img: "assets/beat4.jpg?v=2" },
-  { id: "beat5", title: "BEAT 05", img: "assets/beat5.jpg?v=2", tag: "LAST RELEASE" },
-  { id: "beat6", title: "BEAT 06", img: "assets/beat6.jpg?v=2", tag: "NEW", releaseAt: "2026-08-21T20:00:00" }
+  { id: "beat5", title: "BEAT 05", img: "assets/beat5.jpg?v=2" },
+  { id: "beat6", title: "BEAT 06", img: "assets/beat6.jpg?v=2", tag: "LAST RELEASE" },
+  { id: "beat7", title: "BEAT 07", img: "assets/beat7.jpg?v=2", tag: "NEW", releaseAt: "2026-08-23T20:00:00" }
 ];
 
 const TICKER_TEXT = "KEN CARTER \u2014 ALL BEATS $14.95 \u2014 BUY 2 GET THE 3RD FREE \u2014 ";
