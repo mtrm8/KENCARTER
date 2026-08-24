@@ -190,6 +190,7 @@ button {
 .card__name {
   font-size: 13px;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .card__meta {
@@ -211,6 +212,13 @@ button {
 
 .card__price {
   font-size: 13px;
+  color: var(--gray);
+}
+
+.btc-price {
+  margin-top: 2px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
   color: var(--gray);
 }
 
@@ -337,6 +345,15 @@ button {
 .card--locked .card__media img {
   filter: grayscale(100%) blur(16px);
   transform: scale(1.08);
+}
+.card--locked .card__name,
+.card--locked .card__name-alt,
+.card--locked .card__specs {
+  color: transparent;
+  background: var(--black);
+}
+.card--locked .card__stockrow {
+  visibility: hidden;
 }
 
 .card__countdown {
@@ -496,6 +513,11 @@ button {
   font-weight: 700;
 }
 
+.cart-items__name-alt {
+  font-weight: 400;
+  color: var(--gray);
+}
+
 .cart-items__specs {
   display: block;
   margin-top: 3px;
@@ -527,11 +549,6 @@ button {
 .cart-items__free:hover {
   background: var(--black);
   color: var(--white);
-}
-
-.cart-item--free .cart-items__name {
-  text-decoration: line-through;
-  text-decoration-thickness: 1px;
 }
 
 .cart-items__price--free {
@@ -622,6 +639,69 @@ button {
 .order-form__input.invalid {
   border-color: var(--black);
   background: #f2f2f2;
+}
+
+.paygrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.paygrid.invalid {
+  outline: 1px solid var(--black);
+  outline-offset: 3px;
+}
+
+.paygrid__opt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--black);
+  background: var(--white);
+  color: var(--black);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  padding: 11px 4px 9px;
+  text-align: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.paygrid__opt svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+
+.paygrid__opt:hover {
+  background: var(--black);
+  color: var(--white);
+}
+
+.paygrid__opt--on,
+.paygrid__opt--on:hover {
+  background: var(--black);
+  color: var(--white);
+}
+
+.totals__crypto {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 8px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--black);
+  vertical-align: middle;
+}
+
+.totals__crypto svg {
+  width: 13px;
+  height: 13px;
+  display: block;
 }
 
 .order-form__error {

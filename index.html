@@ -13,6 +13,7 @@
   <link rel="preload" as="image" href="assets/beat5.jpg?v=2">
   <link rel="preload" as="image" href="assets/beat6.jpg?v=2">
   <link rel="preload" as="image" href="assets/beat7.jpg?v=2">
+<link rel="preload" as="image" href="assets/beat8.jpg?v=2">
 </head>
 <body>
 
@@ -68,13 +69,16 @@
       <dl class="totals">
         <div><dt>SUBTOTAL</dt><dd id="t-subtotal">$0.00</dd></div>
         <div class="totals__discount" id="t-discount-row" hidden><dt>YOUR FREE BEAT</dt><dd id="t-discount">&minus;$0.00</dd></div>
-        <div class="totals__grand"><dt>TOTAL</dt><dd id="t-total">$0.00</dd></div>
+        <div class="totals__grand"><dt>TOTAL</dt><dd id="t-total"><span id="t-total-usd">$0.00</span><span class="totals__crypto" id="t-crypto" hidden></span></dd></div>
       </dl>
 
       <form class="order-form" id="order-form" novalidate>
         <label class="order-form__label" for="email">EMAIL FOR DELIVERY</label>
         <input class="order-form__input" type="email" id="email" name="email"
                placeholder="YOU@EMAIL.COM" autocomplete="email" required>
+        <label class="order-form__label" id="paygrid-label">PREFERRED PAYMENT METHOD</label>
+        <div class="paygrid" id="paygrid" role="radiogroup" aria-labelledby="paygrid-label"></div>
+        <input type="hidden" id="payment" name="payment">
         <p class="order-form__error" id="form-error" hidden></p>
         <button class="btn btn--solid" type="submit" id="submit-btn">SUBMIT ORDER</button>
       </form>

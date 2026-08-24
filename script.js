@@ -25,7 +25,8 @@ const BEATS = [
   { id: "beat4", title: "BEAT 04", name: "$$$",                img: "assets/beat4.jpg?v=2", bpm: 140, key: "G MIN",  leases: LEASES_PER_BEAT },
   { id: "beat5", title: "BEAT 05", name: "HIGH VIEW",          img: "assets/beat5.jpg?v=2", bpm: 168, key: "C MIN",  leases: LEASES_PER_BEAT },
   { id: "beat6", title: "BEAT 06", name: "PROTOCOL",           img: "assets/beat6.jpg?v=2", bpm: 135, key: "G# MIN", leases: LEASES_PER_BEAT },
-  { id: "beat7", title: "BEAT 07", name: "LAST SEAT",          img: "assets/beat7.jpg?v=2", bpm: 140, key: "G# MIN", tag: "NEW", releaseAt: "2026-08-23T20:00:00", leases: LEASES_PER_BEAT }
+  { id: "beat7", title: "BEAT 07", name: "LAST SEAT",          img: "assets/beat7.jpg?v=2", bpm: 140, key: "G# MIN", tag: "NEW", releaseAt: "2026-08-23T20:00:00", leases: LEASES_PER_BEAT },
+  { id: "beat8", title: "BEAT 08", name: "ART",                img: "assets/beat8.jpg?v=2", bpm: 126, key: "C# MIN", tag: "NEW", releaseAt: "2026-08-25T20:00:00", leases: LEASES_PER_BEAT }
 ].map((b) => ({ ...b, left: b.left ?? b.leases }));
 
 const TICKER_TEXT = "KEN CARTER \u2014 ALL BEATS $14.95 \u2014 PICK 2, GET 1 FREE \u2014 STRICTLY LIMITED LEASES \u2014 ";
@@ -122,6 +123,130 @@ const cartbar = $("cartbar");
 const drawer = $("drawer");
 const backdrop = $("backdrop");
 
+const BTC_ENDPOINT =
+  "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,tether,usd-coin&vs_currencies=usd";
+
+const PAYMENT_OPTIONS = [
+  {
+    value: "PayPal (Invoice / Direct)",
+    label: "PAYPAL",
+    icon: `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm14.146-14.42a3.35 3.35 0 0 0-.607-.541c-.013.076-.026.175-.041.254-.93 4.778-4.005 7.201-9.138 7.201h-2.19a.563.563 0 0 0-.556.479l-1.187 7.527h-.506l-.24 1.516a.56.56 0 0 0 .554.647h3.882c.46 0 .85-.334.922-.788.06-.26.76-4.852.816-5.09a.932.932 0 0 1 .923-.788h.58c3.76 0 6.705-1.528 7.565-5.946.36-1.847.174-3.388-.777-4.471z"/></svg>`
+  },
+  {
+    value: "Apple Pay / Google Pay (Request)",
+    label: "APPLE / GOOGLE",
+    icon: `<svg viewBox="0 0 24 24" aria-hidden="true"><g transform="translate(-1.4,3.6) scale(0.56)"><path fill="currentColor" d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></g><g transform="translate(11.4,3.6) scale(0.56)"><path fill="currentColor" d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"/></g></svg>`
+  },
+  {
+    value: "Bitcoin (BTC)",
+    label: "BTC",
+    sym: "BTC",
+    id: "bitcoin",
+    icon: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke-width="1.8"/><path stroke-width="1.6" stroke-linecap="round" d="M9.6 7.2h3.5a2.4 2.4 0 0 1 0 4.8H9.6m4 0a2.55 2.55 0 0 1 0 5.1H9.6m0-9.9v9.9m1.6-11.7v1.8m2.2-1.8v1.8m-2.2 9.9v1.8m2.2-1.8v1.8"/></svg>`
+  },
+  {
+    value: "USDT (Tether - TRC20/ERC20)",
+    label: "USDT",
+    sym: "USDT",
+    id: "tether",
+    icon: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="currentColor" fill-rule="evenodd" d="M6.7 6.9h10.6v2.8h-4.2v1.4c2.75.2 4.8.95 4.8 1.85 0 1.05-2.7 1.9-6 1.9s-6-.85-6-1.9c0-.9 2.05-1.65 4.8-1.85V9.7H6.7Zm5.3 6.15c2.95 0 5.35-.6 5.35-1.15 0-.5-1.75-.95-3.65-1.07v1.1c0 .26-.76.47-1.7.47s-1.7-.21-1.7-.47v-1.1c-1.9.12-3.65.57-3.65 1.07 0 .55 2.4 1.15 5.35 1.15Z"/></svg>`
+  },
+  {
+    value: "USDC (USD Coin)",
+    label: "USDC",
+    sym: "USDC",
+    id: "usd-coin",
+    icon: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><text x="12" y="16.6" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12.5" font-weight="700" fill="currentColor">$</text></svg>`
+  },
+  {
+    value: "Ethereum (ETH)",
+    label: "ETH",
+    sym: "ETH",
+    id: "ethereum",
+    icon: `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 1.8 5.4 12.2 12 16l6.6-3.8Z"/><path fill="currentColor" d="M12 17.7 5.4 13.9 12 22.6l6.6-8.7Z"/></svg>`
+  },
+  {
+    value: "Solana (SOL)",
+    label: "SOL",
+    sym: "SOL",
+    id: "solana",
+    icon: `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7.2 4.4h13.2l-2.7 3.2H4.5zM16.8 10.4H3.6l2.7 3.2h13.2zM7.2 16.4h13.2l-2.7 3.2H4.5z"/></svg>`
+  }
+];
+
+const CRYPTO_PRICES = {};
+
+function renderBtc(usd) {
+  const label = `\u2248 ${(PRICE / usd).toFixed(6)} BTC`;
+  document.querySelectorAll(".btc-price").forEach((el) => (el.textContent = label));
+}
+
+function paymentOption(value) {
+  return PAYMENT_OPTIONS.find((o) => o.value === value);
+}
+
+function renderCryptoTotal() {
+  const chip = $("t-crypto");
+  if (!chip) return;
+  const opt = paymentOption($("payment").value);
+  if (!opt) {
+    chip.hidden = true;
+    return;
+  }
+  const { total } = totals();
+  const usd = opt.id ? CRYPTO_PRICES[opt.id] : null;
+  chip.innerHTML =
+    opt.icon +
+    (usd ? `<span>(\u2248 ${(total / usd).toFixed(usd < 5 ? 2 : 6)} ${opt.sym})</span>` : "");
+  chip.hidden = false;
+}
+
+function selectPayment(value) {
+  $("payment").value = value;
+  $("paygrid").classList.remove("invalid");
+  document.querySelectorAll(".paygrid__opt").forEach((b) => {
+    const on = b.dataset.value === value;
+    b.classList.toggle("paygrid__opt--on", on);
+    b.setAttribute("aria-checked", String(on));
+  });
+  renderCryptoTotal();
+}
+
+function buildPaygrid() {
+  const grid = $("paygrid");
+  PAYMENT_OPTIONS.forEach((opt) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "paygrid__opt";
+    btn.dataset.value = opt.value;
+    btn.setAttribute("role", "radio");
+    btn.setAttribute("aria-checked", "false");
+    btn.innerHTML = `${opt.icon}<span>${opt.label}</span>`;
+    grid.appendChild(btn);
+  });
+  grid.addEventListener("click", (e) => {
+    const btn = e.target.closest(".paygrid__opt");
+    if (btn) selectPayment(btn.dataset.value);
+  });
+}
+
+function startBtc() {
+  const update = () =>
+    fetch(BTC_ENDPOINT)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d) return;
+        if (d.bitcoin && d.bitcoin.usd) renderBtc(d.bitcoin.usd);
+        Object.keys(d).forEach((id) => {
+          if (d[id] && d[id].usd) CRYPTO_PRICES[id] = d[id].usd;
+        });
+        renderCryptoTotal();
+      })
+      .catch(() => {});
+  update();
+  setInterval(update, 60000);
+}
+
 function buildTicker() {
   const line = TICKER_TEXT.repeat(6);
   document.querySelectorAll(".ticker__track span").forEach((s) => (s.textContent = line));
@@ -182,6 +307,7 @@ function cardInner(beat) {
         <div class="card__name">${beat.title} <span class="card__name-alt">\u2014 ${beat.name}</span></div>
         <div class="card__specs">${specLine(beat)}</div>
         <div class="card__price">${money(PRICE)}</div>
+        <div class="btc-price"></div>
         ${stockHTML(beat)}
       </div>
       ${action}
@@ -258,7 +384,7 @@ function removeItem(id) {
 function totals() {
   const n = selected.size;
   const subtotal = n * PRICE;
-  const freeCount = Math.floor(n / 3);
+  const freeCount = [...freePicks].filter((id) => selected.has(id)).length;
   const discount = freeCount * PRICE;
   return { n, subtotal, freeCount, discount, total: subtotal - discount };
 }
@@ -284,7 +410,7 @@ function render() {
   $("t-subtotal").textContent = money(subtotal);
   $("t-discount-row").hidden = discount === 0;
   $("t-discount").textContent = "\u2212" + money(discount);
-  $("t-total").textContent = money(total);
+  $("t-total-usd").textContent = money(total);
 
   normalizeFreePicks();
   const hint = $("free-hint");
@@ -299,9 +425,11 @@ function render() {
     hint.hidden = false;
     hint.textContent =
       `TAP \u201cMAKE FREE\u201d ON ${missing === 1 ? "THE BEAT" : missing + " BEATS"} YOU WANT \u2014 ${missing === 1 ? "IT'S" : "THEY'RE"} ON US.`;
-  } else {
+  } else if (freePicks.size > 0) {
     hint.hidden = false;
     hint.textContent = `FREE BEAT${cap > 1 ? "S" : ""} APPLIED.`;
+  } else {
+    hint.hidden = true;
   }
 
   const list = $("cart-items");
@@ -312,13 +440,15 @@ function render() {
     if (picked) li.className = "cart-item--free";
     li.innerHTML = `
       <img src="${b.img}" alt="">
-      <span class="cart-items__name">${b.title}<span class="cart-items__specs">${specLine(b)} \u2014 ${stockLine(b)}</span></span>
+      <span class="cart-items__name">${b.title} <span class="cart-items__name-alt">\u2014 ${b.name}</span><span class="cart-items__specs">${specLine(b)} \u2014 ${stockLine(b)}</span></span>
       <span class="cart-items__price${picked ? " cart-items__price--free" : ""}">${picked ? "FREE" : money(PRICE)}</span>
-      ${cap > 0 && !picked ? `<button class="cart-items__free" data-free="${b.id}">MAKE FREE</button>` : ""}
+      ${picked ? `<button class="cart-items__free" data-free="${b.id}">REMOVE FREE</button>` : cap > freePicks.size ? `<button class="cart-items__free" data-free="${b.id}">MAKE FREE</button>` : ""}
       <button class="cart-items__remove" data-id="${b.id}">REMOVE</button>`;
     list.appendChild(li);
   });
   $("cart-empty").hidden = n !== 0;
+
+  renderCryptoTotal();
 }
 
 function openDrawer() {
@@ -363,6 +493,14 @@ function submitOrder(e) {
     return;
   }
 
+  const payment = $("payment").value;
+  if (!payment) {
+    $("paygrid").classList.add("invalid");
+    errorEl.textContent = "SELECT A PAYMENT METHOD.";
+    errorEl.hidden = false;
+    return;
+  }
+
   if (n === 0) {
     errorEl.textContent = "SELECT AT LEAST ONE BEAT.";
     errorEl.hidden = false;
@@ -392,9 +530,10 @@ function submitOrder(e) {
   const order = {
     apiKey: STATICFORMS_API_KEY,
     email,
-    message: `NEW BEAT ORDER \u2014 ${n} BEAT${n > 1 ? "S" : ""} \u2014 ${money(total)} \u2014 ${labeled.join(", ")}`,
+    message: `NEW BEAT ORDER \u2014 ${n} BEAT${n > 1 ? "S" : ""} \u2014 ${money(total)} \u2014 PAYMENT: ${payment} \u2014 ${labeled.join(", ")}`,
     Beats: labeled.join(", "),
     Free: freeTitles.length ? freeTitles.join(", ") : "\u2014",
+    Payment: payment,
     Specs: specs,
     Items: String(n),
     Subtotal: money(subtotal),
@@ -454,7 +593,7 @@ function showOrderError(err, order) {
   mailto.href =
     `mailto:${OWNER_EMAIL}?subject=${encodeURIComponent(order._subject)}` +
     `&body=${encodeURIComponent(
-      `Email: ${order.Customer_Email}\nBeats: ${order.Beats}\nItems: ${order.Items}\nSubtotal: ${order.Subtotal}\nDiscount: ${order.Discount}\nTotal: ${order.Total}`
+      `Email: ${order.email}\nPayment: ${order.Payment}\nBeats: ${order.Beats}\nItems: ${order.Items}\nSubtotal: ${order.Subtotal}\nDiscount: ${order.Discount}\nTotal: ${order.Total}`
     )}`;
   mailto.textContent = "TAP HERE TO SEND BY EMAIL INSTEAD";
   el.appendChild(mailto);
@@ -479,6 +618,12 @@ function resetDrawer() {
   document.querySelector(".totals").hidden = false;
   $("cart-items").hidden = false;
   $("email").value = "";
+  $("payment").value = "";
+  document.querySelectorAll(".paygrid__opt").forEach((b) => {
+    b.classList.remove("paygrid__opt--on");
+    b.setAttribute("aria-checked", "false");
+  });
+  $("paygrid").classList.remove("invalid");
   $("head-cart").hidden = false;
   closeDrawer();
   if (fromSuccess) window.scrollTo({ top: 0 });
@@ -486,8 +631,10 @@ function resetDrawer() {
 
 buildTicker();
 buildGrid();
+buildPaygrid();
 render();
 startCountdowns();
+startBtc();
 
 if (!endpointIsSet()) $("config-warning").hidden = false;
 
