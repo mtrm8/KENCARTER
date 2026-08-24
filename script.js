@@ -3,18 +3,32 @@ const STATICFORMS_API_KEY = "sf_7dbd34559d35443370eded7e";
 const OWNER_EMAIL = "kencarterr8@gmail.com";
 
 const PRICE = 14.95;
+const LOW_STOCK_AT = 3;
+
+// Details sourced from the "Beat Covers" folder: BEAT XX (NAME) - BPM - KEY.
+// leases = total leases available for the beat, left = leases still on sale.
+// NOTHING SOLD YET — every beat starts at full stock. After an order comes in,
+// drop `left` by the number sold; set left:0 (or soldOut:true) to archive it.
+//
+// ORDERING: the grid is sorted automatically — NEWEST BEATS AT THE TOP,
+// OLDEST AT THE BOTTOM (highest "01 OF 07" tag number first). Sold-out beats
+// sink below the live catalog as an archive, also newest first. To release a
+// new beat just append it to the END of this array as BEAT 08, 09, ... and
+// it appears at the top of the grid on its own. Numbers are derived from this
+// array's order, so they stay permanent per beat.
+const LEASES_PER_BEAT = 10;
 
 const BEATS = [
-  { id: "beat1", title: "BEAT 01", img: "assets/beat1.jpg?v=2" },
-  { id: "beat2", title: "BEAT 02", img: "assets/beat2.jpg?v=2" },
-  { id: "beat3", title: "BEAT 03", img: "assets/beat3.jpg?v=2" },
-  { id: "beat4", title: "BEAT 04", img: "assets/beat4.jpg?v=2" },
-  { id: "beat5", title: "BEAT 05", img: "assets/beat5.jpg?v=2" },
-  { id: "beat6", title: "BEAT 06", img: "assets/beat6.jpg?v=2", tag: "LAST RELEASE" },
-  { id: "beat7", title: "BEAT 07", img: "assets/beat7.jpg?v=2", tag: "NEW", releaseAt: "2026-08-23T20:00:00" }
-];
+  { id: "beat1", title: "BEAT 01", name: "CH\u00a3$$",          img: "assets/beat1.jpg?v=2", bpm: 140, key: "E MIN",  leases: LEASES_PER_BEAT },
+  { id: "beat2", title: "BEAT 02", name: "AnGeLL",             img: "assets/beat2.jpg?v=2", bpm: 75,  key: "G# MIN", leases: LEASES_PER_BEAT },
+  { id: "beat3", title: "BEAT 03", name: "DIAMONS IN THE BAG", img: "assets/beat3.jpg?v=2", bpm: 130, key: "A# MIN", leases: LEASES_PER_BEAT },
+  { id: "beat4", title: "BEAT 04", name: "$$$",                img: "assets/beat4.jpg?v=2", bpm: 140, key: "G MIN",  leases: LEASES_PER_BEAT },
+  { id: "beat5", title: "BEAT 05", name: "HIGH VIEW",          img: "assets/beat5.jpg?v=2", bpm: 168, key: "C MIN",  leases: LEASES_PER_BEAT },
+  { id: "beat6", title: "BEAT 06", name: "PROTOCOL",           img: "assets/beat6.jpg?v=2", bpm: 135, key: "G# MIN", leases: LEASES_PER_BEAT },
+  { id: "beat7", title: "BEAT 07", name: "LAST SEAT",          img: "assets/beat7.jpg?v=2", bpm: 140, key: "G# MIN", tag: "NEW", releaseAt: "2026-08-23T20:00:00", leases: LEASES_PER_BEAT }
+].map((b) => ({ ...b, left: b.left ?? b.leases }));
 
-const TICKER_TEXT = "KEN CARTER \u2014 ALL BEATS $14.95 \u2014 BUY 2 GET THE 3RD FREE \u2014 ";
+const TICKER_TEXT = "KEN CARTER \u2014 ALL BEATS $14.95 \u2014 PICK 2, GET 1 FREE \u2014 STRICTLY LIMITED LEASES \u2014 ";
 
 const money = (n) => "$" + n.toFixed(2);
 
@@ -22,6 +36,14 @@ const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "
 
 const releaseDate = (b) => (b.releaseAt ? new Date(b.releaseAt) : null);
 const isReleased = (b) => !b.releaseAt || Date.now() >= releaseDate(b).getTime();
+const isSoldOut = (b) => b.soldOut || b.left <= 0;
+
+// Grid order: live catalog newest-first, then the sold-out archive newest-first.
+const byNewest = (a, b) => BEATS.indexOf(b) - BEATS.indexOf(a);
+const RENDER_ORDER = [
+  ...BEATS.filter((b) => !isSoldOut(b)).sort(byNewest),
+  ...BEATS.filter((b) => isSoldOut(b)).sort(byNewest)
+];
 
 const pad = (n) => String(n).padStart(2, "0");
 
@@ -41,6 +63,26 @@ function formatRemaining(ms) {
 }
 
 const selected = new Set();
+const freePicks = new Set();
+
+const freeCap = () => Math.floor(selected.size / 3);
+
+function normalizeFreePicks() {
+  const cap = freeCap();
+  [...freePicks].forEach((id) => !selected.has(id) && freePicks.delete(id));
+  while (freePicks.size > cap) freePicks.delete([...freePicks][0]);
+}
+
+function toggleFreePick(id) {
+  if (!selected.has(id) || freeCap() === 0) return;
+  if (freePicks.has(id)) {
+    freePicks.delete(id);
+  } else {
+    if (freePicks.size >= freeCap()) freePicks.delete([...freePicks][0]);
+    freePicks.add(id);
+  }
+  render();
+}
 
 const SENT_ORDERS_KEY = "kencarter_sent_orders";
 
@@ -85,35 +127,74 @@ function buildTicker() {
   document.querySelectorAll(".ticker__track span").forEach((s) => (s.textContent = line));
 }
 
+function beatNum(beat) {
+  return pad(BEATS.indexOf(beat) + 1);
+}
+
+function specLine(beat) {
+  return `${beat.bpm} BPM // ${beat.key}`;
+}
+
+function stockLine(beat) {
+  if (isSoldOut(beat)) return `ALL ${beat.leases} LEASES SOLD`;
+  if (beat.left <= LOW_STOCK_AT) return `ONLY ${beat.left} OF ${beat.leases} LEASES LEFT`;
+  return `${beat.left} OF ${beat.leases} LEASES LEFT`;
+}
+
+function stockHTML(beat) {
+  const low = !isSoldOut(beat) && beat.left <= LOW_STOCK_AT;
+  const pips = Array.from({ length: beat.leases }, (_, i) =>
+    `<i${i < beat.left ? ` class="${i === beat.left - 1 && low ? "on last" : "on"}"` : ""}></i>`
+  ).join("");
+  return `
+    <div class="card__stockrow">
+      <span class="card__stock${low ? " card__stock--low" : ""}">${stockLine(beat)}</span>
+      <span class="card__stockbar" aria-hidden="true">${pips}</span>
+    </div>`;
+}
+
 function cardInner(beat) {
   const released = isReleased(beat);
+  const sold = isSoldOut(beat);
+  const mediaTag = sold
+    ? `<span class="card__tag card__tag--sold">SOLD OUT</span>`
+    : released
+      ? beat.tag
+        ? `<span class="card__tag">${beat.tag}</span>`
+        : ""
+      : `<div class="card__countdown">
+           <span class="card__countdown-label">DROPS ${dropLabel(releaseDate(beat))}</span>
+           <span class="card__countdown-timer" id="countdown-${beat.id}">${formatRemaining(releaseDate(beat) - Date.now())}</span>
+         </div>`;
+  const action = sold
+    ? `<button class="card__btn card__btn--sold" disabled>SOLD OUT</button>`
+    : released
+      ? `<button class="card__btn" data-id="${beat.id}" data-on="0" aria-pressed="false"><span class="lbl">ADD</span><span class="lbl">REMOVE</span></button>`
+      : `<button class="card__btn" data-id="${beat.id}" disabled>SOON</button>`;
   return `
     <div class="card__media">
       <img src="${beat.img}" alt="${beat.title}" decoding="async" fetchpriority="high">
-      ${released
-        ? beat.tag
-          ? `<span class="card__tag">${beat.tag}</span>`
-          : ""
-        : `<div class="card__countdown">
-             <span class="card__countdown-label">DROPS ${dropLabel(releaseDate(beat))}</span>
-             <span class="card__countdown-timer" id="countdown-${beat.id}">${formatRemaining(releaseDate(beat) - Date.now())}</span>
-           </div>`}
+      <span class="card__num">${beatNum(beat)} OF ${pad(BEATS.length)}</span>
+      ${mediaTag}
     </div>
     <div class="card__info">
-      <div>
-        <div class="card__name">${beat.title}</div>
+      <div class="card__meta">
+        <div class="card__name">${beat.title} <span class="card__name-alt">\u2014 ${beat.name}</span></div>
+        <div class="card__specs">${specLine(beat)}</div>
         <div class="card__price">${money(PRICE)}</div>
+        ${stockHTML(beat)}
       </div>
-      ${released
-        ? `<button class="card__btn" data-id="${beat.id}">ADD</button>`
-        : `<button class="card__btn" data-id="${beat.id}" disabled>SOON</button>`}
+      ${action}
     </div>`;
 }
 
 function buildGrid() {
-  BEATS.forEach((beat) => {
+  RENDER_ORDER.forEach((beat) => {
     const card = document.createElement("article");
-    card.className = "card" + (isReleased(beat) ? "" : " card--locked");
+    card.className =
+      "card" +
+      (isReleased(beat) ? "" : " card--locked") +
+      (isSoldOut(beat) ? " card--sold" : "");
     card.id = "card-" + beat.id;
     card.innerHTML = cardInner(beat);
     grid.appendChild(card);
@@ -163,7 +244,7 @@ function startCountdowns() {
 
 function toggle(id) {
   const beat = BEATS.find((b) => b.id === id);
-  if (!beat || !isReleased(beat)) return;
+  if (!beat || !isReleased(beat) || isSoldOut(beat)) return;
   if (selected.has(id)) selected.delete(id);
   else selected.add(id);
   render();
@@ -186,12 +267,13 @@ function render() {
   const { n, subtotal, discount, total } = totals();
 
   BEATS.forEach((b) => {
-    if (!isReleased(b)) return;
+    if (!isReleased(b) || isSoldOut(b)) return;
     const card = $("card-" + b.id);
-    const btn = card.querySelector(".card__btn");
     const on = selected.has(b.id);
     card.classList.toggle("card--selected", on);
-    btn.textContent = on ? "REMOVE" : "ADD";
+    const btn = card.querySelector(".card__btn");
+    btn.dataset.on = on ? "1" : "0";
+    btn.setAttribute("aria-pressed", String(on));
   });
 
   cartbar.disabled = n === 0;
@@ -204,14 +286,35 @@ function render() {
   $("t-discount").textContent = "\u2212" + money(discount);
   $("t-total").textContent = money(total);
 
+  normalizeFreePicks();
+  const hint = $("free-hint");
+  const cap = freeCap();
+  const missing = cap - freePicks.size;
+  if (n === 0) {
+    hint.hidden = true;
+  } else if (n % 3 === 2) {
+    hint.hidden = false;
+    hint.textContent = "ONE MORE \u2014 YOUR NEXT BEAT COMES FREE.";
+  } else if (missing > 0) {
+    hint.hidden = false;
+    hint.textContent =
+      `TAP \u201cMAKE FREE\u201d ON ${missing === 1 ? "THE BEAT" : missing + " BEATS"} YOU WANT \u2014 ${missing === 1 ? "IT'S" : "THEY'RE"} ON US.`;
+  } else {
+    hint.hidden = false;
+    hint.textContent = `FREE BEAT${cap > 1 ? "S" : ""} APPLIED.`;
+  }
+
   const list = $("cart-items");
   list.innerHTML = "";
   BEATS.filter((b) => selected.has(b.id)).forEach((b) => {
+    const picked = freePicks.has(b.id);
     const li = document.createElement("li");
+    if (picked) li.className = "cart-item--free";
     li.innerHTML = `
       <img src="${b.img}" alt="">
-      <span class="cart-items__name">${b.title}</span>
-      <span>${money(PRICE)}</span>
+      <span class="cart-items__name">${b.title}<span class="cart-items__specs">${specLine(b)} \u2014 ${stockLine(b)}</span></span>
+      <span class="cart-items__price${picked ? " cart-items__price--free" : ""}">${picked ? "FREE" : money(PRICE)}</span>
+      ${cap > 0 && !picked ? `<button class="cart-items__free" data-free="${b.id}">MAKE FREE</button>` : ""}
       <button class="cart-items__remove" data-id="${b.id}">REMOVE</button>`;
     list.appendChild(li);
   });
@@ -273,7 +376,11 @@ function submitOrder(e) {
     return;
   }
 
-  const titles = BEATS.filter((b) => selected.has(b.id)).map((b) => b.title);
+  const chosen = BEATS.filter((b) => selected.has(b.id));
+  const titles = chosen.map((b) => b.title);
+  const specs = chosen.map(specLine).join(" | ");
+  const labeled = chosen.map((b) => `${b.title}${freePicks.has(b.id) ? " (FREE)" : ""}`);
+  const freeTitles = chosen.filter((b) => freePicks.has(b.id)).map((b) => b.title);
 
   const signature = orderSignature(email, titles);
   if (sentOrders.has(signature)) {
@@ -285,11 +392,13 @@ function submitOrder(e) {
   const order = {
     apiKey: STATICFORMS_API_KEY,
     email,
-    message: `NEW BEAT ORDER \u2014 ${n} BEAT${n > 1 ? "S" : ""} \u2014 ${money(total)} \u2014 ${titles.join(", ")}`,
-    Beats: titles.join(", "),
+    message: `NEW BEAT ORDER \u2014 ${n} BEAT${n > 1 ? "S" : ""} \u2014 ${money(total)} \u2014 ${labeled.join(", ")}`,
+    Beats: labeled.join(", "),
+    Free: freeTitles.length ? freeTitles.join(", ") : "\u2014",
+    Specs: specs,
     Items: String(n),
     Subtotal: money(subtotal),
-    Discount: discount > 0 ? `\u2212${money(discount)} (buy 2 get 3rd free)` : "\u2014",
+    Discount: discount > 0 ? `\u2212${money(discount)} (pick 2, get 1 free)` : "\u2014",
     Total: money(total),
     Date: new Date().toLocaleString()
   };
@@ -387,6 +496,11 @@ $("close").addEventListener("click", resetDrawer);
 backdrop.addEventListener("click", resetDrawer);
 document.addEventListener("keydown", (e) => e.key === "Escape" && resetDrawer());
 $("cart-items").addEventListener("click", (e) => {
+  const free = e.target.closest(".cart-items__free");
+  if (free) {
+    toggleFreePick(free.dataset.free);
+    return;
+  }
   const btn = e.target.closest(".cart-items__remove");
   if (btn) removeItem(btn.dataset.id);
 });

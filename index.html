@@ -33,11 +33,17 @@
   </header>
 
   <main>
+    <section class="offer" aria-label="Offer">
+      <span class="offer__kicker">LIMITED OFFER</span>
+      <p class="offer__title">PICK ANY 2 BEATS &mdash; THE 3RD IS FREE</p>
+      <p class="offer__sub">YOUR CHOICE &mdash; MARK YOUR FREE BEAT IN THE CART AT CHECKOUT</p>
+    </section>
     <section class="grid" id="grid"></section>
   </main>
 
   <footer class="footer">
-    <p>KEN CARTER &copy; 2026 &mdash; ALL BEATS $14.95 &mdash; BUY 2 GET THE 3RD FREE</p>
+    <p>KEN CARTER &copy; 2026 &mdash; ALL BEATS $14.95 &mdash; PICK 2, GET 1 FREE</p>
+    <p class="footer__note">EVERY TRACK IS A LIMITED LEASE &mdash; EACH BEAT IS CAPPED AT A FIXED NUMBER OF LICENSES AND MARKED SOLD OUT FOREVER ONCE THEY'RE GONE.</p>
   </footer>
 
   <button class="cartbar" id="cartbar" disabled>
@@ -57,9 +63,11 @@
       <ul class="cart-items" id="cart-items"></ul>
       <p class="cart-empty" id="cart-empty">NO BEATS SELECTED.</p>
 
+      <p class="free-hint" id="free-hint" hidden></p>
+
       <dl class="totals">
         <div><dt>SUBTOTAL</dt><dd id="t-subtotal">$0.00</dd></div>
-        <div class="totals__discount" id="t-discount-row" hidden><dt>BUY 2 GET 3RD FREE</dt><dd id="t-discount">&minus;$0.00</dd></div>
+        <div class="totals__discount" id="t-discount-row" hidden><dt>YOUR FREE BEAT</dt><dd id="t-discount">&minus;$0.00</dd></div>
         <div class="totals__grand"><dt>TOTAL</dt><dd id="t-total">$0.00</dd></div>
       </dl>
 
