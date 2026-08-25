@@ -405,7 +405,7 @@ function render() {
   // Cart size changed → re-check which payment methods remain affordable.
   updatePaygridLocks();
   // If the selected method just became unaffordable, fall back automatically.
-  if (payGroup && isGroupBelowMin(payGroup)) {
+  if (n > 0 && payGroup && isGroupBelowMin(payGroup)) {
     const alt = firstAffordableGroup();
     if (alt) selectPayment(alt.value);
     else {
@@ -677,10 +677,12 @@ function refreshChipLocks() {
 }
 
 // ── Drawer paygrid locks: a method group is disabled when the cart total is
-// below the minimum of EVERY coin it offers. BTC (~$26 min) locks on $14.95 carts.
+// below the minimum of EVERY coin it offers. Empty carts stay fully
+// selectable — minimums only constrain carts that contain beats. ──
 function isGroupBelowMin(group) {
-  if (!npMins) return false;
-  return group.assets.every((s) => isBelowMinSym(s, totals().total));
+  const { n, total } = totals();
+  if (!npMins || n === 0) return false;
+  return group.assets.every((s) => isBelowMinSym(s, total));
 }
 
 function firstAffordableGroup(excludeValue) {
@@ -690,10 +692,15 @@ function firstAffordableGroup(excludeValue) {
 }
 
 function updatePaygridLocks() {
+  const { n, total } = totals();
+  const enforce = n > 0 && !!npMins; // no locks on an empty cart
   document.querySelectorAll(".paygrid__opt").forEach((b) => {
     const group = PAYMENT_GROUPS.find((g) => g.value === b.dataset.value);
     if (!group) return;
-    const blocked = isGroupBelowMin(group);
+    const blocked =
+      enforce &&
+      npMins &&
+      group.assets.every((s) => typeof npMins[s] === "number" && total < npMins[s]);
     b.classList.toggle("paygrid__opt--off", blocked);
     b.disabled = blocked;
     if (blocked) {
