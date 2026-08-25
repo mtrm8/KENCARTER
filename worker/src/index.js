@@ -82,6 +82,8 @@ async function handleMins(url, env) {
     .map((s) => s.trim())
     .filter((s) => COIN_CODES[s]);
   const mins = {};
+  // NOWPayments rate-limits bursts — pace lookups (configurable for tests)
+  const paceMs = Number(env.MIN_LOOKUP_DELAY_MS ?? 200);
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   for (const sym of coins) {
@@ -93,7 +95,7 @@ async function handleMins(url, env) {
         try {
           m = await np(env, "/min-amount?currency_from=" + code + "&currency_to=usd", "GET");
         } catch (e) {
-          if (attempt === 0) await sleep(400);
+          if (attempt === 0) await sleep(paceMs * 2);
           else throw e;
         }
       }
@@ -102,7 +104,7 @@ async function handleMins(url, env) {
       const usd = typeof est.estimated_amount === "number" ? est.estimated_amount : parseFloat(est.estimated_amount);
       // small safety margin so borderline totals don't slip through
       if (usd != null && !isNaN(usd)) mins[sym] = Math.ceil(usd * 100 * 1.05) / 100;
-      await sleep(200);
+      await sleep(paceMs);
     } catch (e) {
       console.error("min lookup failed:", sym, e.message);
     }
