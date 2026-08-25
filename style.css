@@ -98,6 +98,84 @@ button {
   box-sizing: border-box;
 }
 
+.drop-banner {
+  background: var(--black);
+  color: var(--white);
+  border-bottom: 1px solid var(--hairline);
+  text-align: center;
+  padding: 18px 16px 20px;
+}
+
+.drop-banner__kicker {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.35em;
+  color: #888888;
+}
+
+.drop-banner__timer {
+  margin-top: 8px;
+  font-size: clamp(26px, 7vw, 46px);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.drop-banner__target {
+  display: block;
+  margin-top: 6px;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: #888888;
+}
+
+.card--censored .card__media img {
+  filter: blur(14px) grayscale(1) brightness(0.55);
+  transform: scale(1.08);
+}
+
+.redact-bar {
+  display: inline-block;
+  height: 14px;
+  background: var(--black);
+  vertical-align: middle;
+}
+
+.redact-bar--thin {
+  height: 9px;
+}
+
+.card__unlock {
+  margin-top: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--gray);
+}
+
+.grid-closed {
+  grid-column: 1 / -1;
+  padding: 64px 20px;
+  text-align: center;
+  background: var(--black);
+  color: var(--white);
+}
+
+.grid-closed__title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  margin-bottom: 10px;
+}
+
+.grid-closed__box p {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: #888888;
+}
+
 .season {
   border-top: 1px solid var(--hairline);
   text-align: center;

@@ -29,15 +29,104 @@ const BEATS = [
   { id: "beat7", title: "BEAT 07", name: "LAST SEAT",          img: "assets/beat7.jpg?v=2", bpm: 140, key: "G# MIN", tag: "SEASON 01", releaseAt: "2026-08-23T20:00:00", leases: LEASES_PER_BEAT }
 ].map((b) => ({ ...b, left: b.left ?? b.leases }));
 
+// ── SEASON 02 catalog — placeholder metadata; swap covers/details before launch.
+const SEASON2_BEATS = Array.from({ length: 7 }, (_, i) => ({
+  id: `s2-beat${i + 1}`,
+  title: `BEAT ${String(i + 1).padStart(2, "0")}`,
+  name: "\u2014",
+  img: `assets/beat${i + 1}.jpg?v=2`,
+  bpm: 0,
+  key: "\u2014",
+  leases: LEASES_PER_BEAT
+})).map((b) => ({ ...b, left: b.leases }));
+
+let CATALOG = BEATS; // active selling list, swapped by the season scheduler
+
 const TICKER_TEXT = "KEN CARTER \u2014 SEASON 01 IS LIVE \u2014 STRICTLY LIMITED LEASES \u2014 ALL BEATS $14.95 \u2014 PICK 2, GET 1 FREE \u2014 ";
 
-// Official closing of SEASON 01 (7 days out). When this passes, the season
-// banner timer expires and the season locks.
-const SEASON_END_AT = "2026-09-01T20:00:00";
+// ── Season scheduling — every moment expressed in UTC (Z) ───────────────
+const S01_CLOSE_AT = "2026-08-29T20:00:00Z";  // Season 01 locks
+const S02_OPEN_AT  = "2026-08-30T20:00:00Z";  // Season 02 launches
+const S02_CLOSE_AT = "2026-09-12T20:00:00Z";  // Season 02 locks until next season
+const DAY_MS       = 24 * 60 * 60 * 1000;
+let storeTimer     = null;
+
+// SEASON 02 blind rollout: beat k (1-based) is live on UTC day k of the season.
+function s02UnlockedCount(now = Date.now()) {
+  if (!CATALOG.length) return 0;
+  const openDay = Math.floor(Date.parse(S02_OPEN_AT) / DAY_MS);
+  const today = Math.floor(now / DAY_MS);
+  return Math.max(1, Math.min(CATALOG.length, today - openDay + 1));
+}
 
 const money = (n) => "$" + n.toFixed(2);
 
-const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+function storePhase(now = Date.now()) {
+  const t = typeof now === "number" ? now : Date.now();
+  if (t < Date.parse(S01_CLOSE_AT)) return "S01";
+  if (t < Date.parse(S02_OPEN_AT)) return "GAP";
+  if (t < Date.parse(S02_CLOSE_AT)) return "S02";
+  return "POST";
+}
+
+function setKicker(text) {
+  const k = document.querySelector(".season__kicker");
+  if (k) k.textContent = text;
+}
+
+// Season section: counts down whichever season is currently on sale.
+function tickSeason() {
+  const timerEl = $("season-timer");
+  if (!timerEl) return;
+  const statusEl = $("season-status");
+  const phase = storePhase();
+
+  if (phase === "S01") {
+    setKicker("SEASON 01 CLOSES IN");
+    if (statusEl) statusEl.textContent = "SEASON 01 LOCKS WHEN TIMER EXPIRES OR LEASES SELL OUT.";
+    const remaining = Date.parse(S01_CLOSE_AT) - Date.now();
+    timerEl.textContent = remaining <= 0 ? "EXPIRED" : formatRemaining(remaining);
+    return;
+  }
+  if (phase === "GAP") {
+    setKicker("SEASON 01 HAS CLOSED");
+    if (statusEl) statusEl.textContent = "SEASON 02 OPENS AUG 30 \u00b7 20:00 UTC.";
+    timerEl.textContent = "SEE YOU AT THE DROP";
+    return;
+  }
+  if (phase === "S02") {
+    setKicker("SEASON 02 CLOSES IN");
+    if (statusEl) statusEl.textContent = "SEASON 02 LOCKS WHEN TIMER EXPIRES OR LEASES SELL OUT.";
+    const remaining = Date.parse(S02_CLOSE_AT) - Date.now();
+    timerEl.textContent = remaining <= 0 ? "EXPIRED" : formatRemaining(remaining);
+    return;
+  }
+  setKicker("SEASON 02 HAS CLOSED");
+  if (statusEl) statusEl.textContent = "THE STORE REOPENS WITH THE NEXT SEASON.";
+  timerEl.textContent = "NEXT DROP TO BE ANNOUNCED";
+}
+
+// Top strip: hypes the next scheduled moment.
+function tickS02() {
+  const el = $("s02-timer");
+  if (!el) return;
+  const kicker = document.getElementById("s02-kicker");
+  const phase = storePhase();
+
+  if (phase === "S02") {
+    if (kicker) kicker.textContent = "SEASON 02 IS LIVE";
+    el.textContent = "LIVE NOW";
+    return;
+  }
+  if (phase === "POST") {
+    if (kicker) kicker.textContent = "SEASON 02 HAS CLOSED";
+    el.textContent = "NEXT DROP TBA";
+    return;
+  }
+  if (kicker) kicker.textContent = "SEASON 02 \u2014 NEXT DROP IN";
+  const remaining = Date.parse(S02_OPEN_AT) - Date.now();
+  el.textContent = remaining <= 0 ? "OPENING\u2026" : formatRemaining(remaining);
+}const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 
 const releaseDate = (b) => (b.releaseAt ? new Date(b.releaseAt) : null);
 const isReleased = (b) => !b.releaseAt || Date.now() >= releaseDate(b).getTime();
@@ -45,11 +134,12 @@ const isSoldOut = (b) => b.soldOut || b.left <= 0;
 
 // Grid order: live catalog newest-first, then the sold-out archive newest-first.
 const byNewest = (a, b) => BEATS.indexOf(b) - BEATS.indexOf(a);
-const RENDER_ORDER = [
-  ...BEATS.filter((b) => !isSoldOut(b)).sort(byNewest),
-  ...BEATS.filter((b) => isSoldOut(b)).sort(byNewest)
-];
-
+function renderOrder(list) {
+  return [
+    ...list.filter((b) => !isSoldOut(b)).sort(byNewest),
+    ...list.filter((b) => isSoldOut(b)).sort(byNewest)
+  ];
+}
 const pad = (n) => String(n).padStart(2, "0");
 
 function dropLabel(d) {
@@ -246,11 +336,13 @@ function buildTicker() {
 }
 
 function beatNum(beat) {
-  return pad(BEATS.indexOf(beat) + 1);
+  return pad(CATALOG.indexOf(beat) + 1);
 }
 
 function specLine(beat) {
-  return `${beat.bpm} BPM // ${beat.key}`;
+  return beat.bpm
+    ? `${beat.bpm} BPM // ${beat.key}`
+    : "FULL DETAILS DROP WITH THE BEAT";
 }
 
 function stockLine(beat) {
@@ -271,7 +363,27 @@ function stockHTML(beat) {
     </div>`;
 }
 
-function cardInner(beat) {
+function cardInner(beat, locked = false, index = 0) {
+  if (locked) {
+    // SEASON 02 blind rollout: identity censored, price visible, unclickable.
+    const unlockDay = new Date(Date.parse(S02_OPEN_AT) + index * DAY_MS);
+    const label = `${MONTHS[unlockDay.getUTCMonth()]} ${unlockDay.getUTCDate()}`;
+    return `
+      <div class="card__media">
+        <img src="${beat.img}" alt="LOCKED" decoding="async" loading="lazy">
+        <span class="card__num">${pad(index + 1)} OF ${pad(SEASON2_BEATS.length)}</span>
+      </div>
+      <div class="card__info">
+        <div class="card__meta">
+          <div class="card__name"><span class="redact-bar" style="width:72%"></span></div>
+          <div class="card__specs"><span class="redact-bar redact-bar--thin" style="width:46%"></span></div>
+          <div class="card__price">${money(PRICE)}</div>
+          <div class="btc-price"></div>
+          <div class="card__unlock">UNLOCKS ${label} · 20:00 UTC</div>
+        </div>
+        <button class="card__btn" disabled>LOCKED</button>
+      </div>`;
+  }
   const released = isReleased(beat);
   const sold = isSoldOut(beat);
   const mediaTag = sold
@@ -292,7 +404,7 @@ function cardInner(beat) {
   return `
     <div class="card__media">
       <img src="${beat.img}" alt="${beat.title}" decoding="async" fetchpriority="high">
-      <span class="card__num">${beatNum(beat)} OF ${pad(BEATS.length)}</span>
+      <span class="card__num">${beatNum(beat)} OF ${pad(CATALOG.length)}</span>
       ${mediaTag}
     </div>
     <div class="card__info">
@@ -308,78 +420,40 @@ function cardInner(beat) {
 }
 
 function buildGrid() {
-  RENDER_ORDER.forEach((beat) => {
+  grid.innerHTML = "";
+  const list = renderOrder(CATALOG);
+
+  if (!list.length) {
+    const panel = document.createElement("article");
+    panel.className = "grid-closed";
+    panel.innerHTML =
+      currentPhase === "GAP"
+        ? `<div class="grid-closed__box"><div class="grid-closed__title">SEASON 01 HAS CLOSED</div><p>SEASON 02 OPENS AUG 30 · 20:00 UTC.</p></div>`
+        : `<div class="grid-closed__box"><div class="grid-closed__title">SEASON 02 HAS CLOSED</div><p>NEXT DROP TO BE ANNOUNCED.</p></div>`;
+    grid.appendChild(panel);
+    return;
+  }
+
+  // SEASON 02 blind rollout: one new beat unlocks every day from launch.
+  const unlockedCount = currentPhase === "S02" ? s02UnlockedCount() : list.length;
+  lastUnlockedCount = unlockedCount;
+
+  list.forEach((beat, i) => {
+    const locked = i >= unlockedCount;
     const card = document.createElement("article");
     card.className =
       "card" +
       (isReleased(beat) ? "" : " card--locked") +
-      (isSoldOut(beat) ? " card--sold" : "");
+      (isSoldOut(beat) ? " card--sold" : "") +
+      (locked ? " card--censored" : "");
     card.id = "card-" + beat.id;
-    card.innerHTML = cardInner(beat);
+    card.innerHTML = cardInner(beat, locked, i);
     grid.appendChild(card);
   });
-
-  grid.addEventListener("click", (e) => {
-    const btn = e.target.closest(".card__btn");
-    if (!btn || btn.disabled) return;
-    toggle(btn.dataset.id);
-  });
-}
-
-let countdownTimer = null;
-
-function checkReleases() {
-  let allLive = true;
-  BEATS.forEach((beat) => {
-    const card = $("card-" + beat.id);
-    if (!card || !card.classList.contains("card--locked")) return;
-    const remaining = releaseDate(beat).getTime() - Date.now();
-    if (remaining <= 0) {
-      unlockBeat(beat);
-      return;
-    }
-    allLive = false;
-    const el = $("countdown-" + beat.id);
-    if (el) el.textContent = formatRemaining(remaining);
-  });
-  if (allLive && countdownTimer) {
-    clearInterval(countdownTimer);
-    countdownTimer = null;
-  }
-}
-
-function unlockBeat(beat) {
-  const card = $("card-" + beat.id);
-  if (!card) return;
-  card.classList.remove("card--locked");
-  card.innerHTML = cardInner(beat);
-  render();
-}
-
-function startCountdowns() {
-  if (!BEATS.some((b) => !isReleased(b))) return;
-  countdownTimer = setInterval(checkReleases, 1000);
-}
-
-let seasonTimer = null;
-
-function tickSeason() {
-  const el = $("season-timer");
-  if (!el) return;
-  const remaining = new Date(SEASON_END_AT).getTime() - Date.now();
-  if (remaining <= 0) {
-    el.textContent = "EXPIRED";
-    if (seasonTimer) {
-      clearInterval(seasonTimer);
-      seasonTimer = null;
-    }
-    return;
-  }
-  el.textContent = formatRemaining(remaining);
 }
 
 function toggle(id) {
-  const beat = BEATS.find((b) => b.id === id);
+  const beat = CATALOG.find((b) => b.id === id);
   if (!beat || !isReleased(beat) || isSoldOut(beat)) return;
   if (selected.has(id)) selected.delete(id);
   else selected.add(id);
@@ -416,7 +490,7 @@ function render() {
     }
   }
 
-  BEATS.forEach((b) => {
+  CATALOG.forEach((b) => {
     if (!isReleased(b) || isSoldOut(b)) return;
     const card = $("card-" + b.id);
     const on = selected.has(b.id);
@@ -458,7 +532,7 @@ function render() {
 
   const list = $("cart-items");
   list.innerHTML = "";
-  BEATS.filter((b) => selected.has(b.id)).forEach((b) => {
+  CATALOG.filter((b) => selected.has(b.id)).forEach((b) => {
     const picked = freePicks.has(b.id);
     const li = document.createElement("li");
     if (picked) li.className = "cart-item--free";
@@ -524,28 +598,13 @@ function submitOrder(e) {
     }
   }
 
-  const payment = $("payment").value;
-  if (!payment) {
-    $("paygrid").classList.add("invalid");
-    errorEl.textContent = "SELECT A PAYMENT METHOD.";
+  if (!CATALOG.length) {
+    errorEl.textContent = "THE STORE IS CURRENTLY CLOSED \u2014 NEXT DROP TO BE ANNOUNCED.";
     errorEl.hidden = false;
     return;
   }
 
-  if (n === 0) {
-    errorEl.textContent = "SELECT AT LEAST ONE BEAT.";
-    errorEl.hidden = false;
-    return;
-  }
-
-  if (!WORKER_URL) {
-    emailInput.classList.add("invalid");
-    errorEl.textContent = "STORE OWNER: OPEN SCRIPT.JS AND SET YOUR WORKER URL AT THE TOP OF THE FILE.";
-    errorEl.hidden = false;
-    return;
-  }
-
-  const chosen = BEATS.filter((b) => selected.has(b.id));
+  const payment = $("payment").value;  const chosen = CATALOG.filter((b) => selected.has(b.id));
   lastOrder = {
     email,
     group: payGroup,
@@ -915,13 +974,43 @@ function resetDrawer() {
   closeDrawer();
 }
 
+/* ── Season scheduler ──────────────────────────────────────────────── */
+let currentPhase = null;
+let lastUnlockedCount = -1;
+
+function rebuildForPhase(phase) {
+  CATALOG = phase === "S01" ? BEATS : phase === "S02" ? SEASON2_BEATS : [];
+  lastUnlockedCount = -1;
+  buildGrid();
+}
+
+function applyPhase(force = false) {
+  const p = storePhase();
+  if (!force && p === currentPhase) return;
+  const leavingS01 = currentPhase === "S01" && p !== "S01";
+  currentPhase = p;
+  if (leavingS01 || p === "GAP" || p === "POST") {
+    selected.clear();
+    freePicks.clear();
+  }
+  rebuildForPhase(p);
+  render();
+}
+
+function storeTick() {
+  applyPhase();
+  if (currentPhase === "S02") {
+    if (s02UnlockedCount() !== lastUnlockedCount) buildGrid();
+  }
+  tickSeason();
+  tickS02();
+}
+
 buildTicker();
-buildGrid();
 buildPaygrid();
+applyPhase(true);
 render();
-startCountdowns();
-tickSeason();
-seasonTimer = setInterval(tickSeason, 1000);
+storeTimer = setInterval(storeTick, 1000);
 startBtc();
 loadMins();
 
@@ -951,3 +1040,9 @@ $("payscreen-close").addEventListener("click", () => {
   window.scrollTo({ top: 0 });
 });
 $("copy-address").addEventListener("click", copyPayAddress);
+
+grid.addEventListener("click", (e) => {
+  const btn = e.target.closest(".card__btn");
+  if (!btn || btn.disabled) return;
+  toggle(btn.dataset.id);
+});
