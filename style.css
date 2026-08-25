@@ -98,6 +98,46 @@ button {
   box-sizing: border-box;
 }
 
+.season {
+  border-top: 1px solid var(--hairline);
+  text-align: center;
+  padding: 24px 16px 26px;
+}
+
+.season__kicker {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.35em;
+  color: var(--gray);
+}
+
+.season__kicker::before,
+.season__kicker::after {
+  content: "";
+  height: 1px;
+  width: 44px;
+  background: var(--black);
+}
+
+.season__timer {
+  margin-top: 12px;
+  font-size: clamp(30px, 8vw, 56px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
+.season__status {
+  margin-top: 10px;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--gray);
+}
+
 .offer {
   border-top: 1px solid var(--hairline);
   border-bottom: 1px solid var(--hairline);
@@ -422,6 +462,271 @@ button {
   color: var(--black);
 }
 
+.paygrid__opt-sub {
+  font-size: 7px;
+  letter-spacing: 0.14em;
+  opacity: 0.55;
+}
+
+.payscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 16px;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(6px);
+  overflow-y: auto;
+}
+
+.payscreen__card {
+  position: relative;
+  width: min(420px, 100%);
+  background: var(--black);
+  border: 1px solid #333;
+  color: var(--white);
+  padding: 34px 26px 28px;
+  text-align: center;
+  animation: payscreen-pop 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes payscreen-pop {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .payscreen__card { animation: none; }
+}
+
+.payscreen__close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  border: none;
+  background: none;
+  color: var(--gray);
+  font-size: 24px;
+  line-height: 1;
+  padding: 4px 10px;
+}
+
+.payscreen__close:hover {
+  color: var(--white);
+}
+
+.payscreen__kicker {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.35em;
+  color: var(--gray);
+}
+
+.payscreen__title {
+  margin-top: 10px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.payscreen__amounts {
+  margin-top: 18px;
+  border-top: 1px solid #222;
+}
+
+.payscreen__amounts > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #222;
+}
+
+.payscreen__amounts dt {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--gray);
+  text-align: left;
+}
+
+#payscreen-total {
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.payscreen__equiv {
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.payscreen__tabs {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.payscreen__tab {
+  border: 1px solid #333;
+  background: var(--black);
+  color: var(--gray);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 7px 14px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.payscreen__tab--on,
+.payscreen__tab--on:hover {
+  background: var(--white);
+  border-color: var(--white);
+  color: var(--black);
+}
+
+.payscreen__tab--off,
+.payscreen__tab--off:hover {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.payscreen__alert {
+  margin-top: 12px;
+  border: 1px solid var(--white);
+  background: var(--white);
+  color: var(--black);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.6;
+  padding: 11px 12px;
+}
+
+.np-status {
+  display: inline-block;
+  margin-top: 14px;
+  border: 1px solid #333;
+  padding: 8px 14px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: var(--gray);
+}
+
+.np-status--warn {
+  background: var(--black);
+  border-color: var(--black);
+  color: var(--white);
+  animation: stock-pulse 1.8s ease-in-out infinite;
+}
+
+.np-status--ok {
+  background: var(--white);
+  border-color: var(--white);
+  color: var(--black);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .np-status--warn { animation: none; }
+}
+
+.payscreen__address {
+  display: block;
+  margin-top: 14px;
+  padding: 11px 12px;
+  background: #0d0d0d;
+  border: 1px solid #333;
+  font-family: "SF Mono", SFMono-Regular, Consolas, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-all;
+  text-align: left;
+  color: var(--white);
+}
+
+.payscreen__copy {
+  margin-top: 10px;
+  width: 100%;
+  border: 1px solid var(--white);
+  background: var(--black);
+  color: var(--white);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  padding: 12px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.payscreen__copy:hover {
+  background: var(--white);
+  color: var(--black);
+}
+
+.payscreen__network {
+  margin-top: 12px;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--gray);
+}
+
+.payscreen__pending {
+  margin-top: 16px;
+  border: 1px dashed #444;
+  padding: 12px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  line-height: 1.6;
+  color: var(--gray);
+}
+
+.payscreen__note {
+  margin-top: 16px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  line-height: 1.7;
+  color: var(--gray);
+}
+
+.payscreen__dls {
+  margin-top: 16px;
+}
+
+.payscreen__label {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  color: var(--gray);
+  margin-bottom: 8px;
+}
+
+.payscreen__dl {
+  display: block;
+  border: 1px solid #444;
+  background: var(--black);
+  color: var(--white);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-align: center;
+  padding: 11px 12px;
+  margin-bottom: 6px;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.payscreen__dl:hover {
+  background: var(--white);
+  border-color: var(--white);
+  color: var(--black);
+}
+
 .footer {
   margin-top: auto;
   padding: 40px 20px 96px;
@@ -713,6 +1018,12 @@ button {
   color: var(--white);
 }
 
+.paygrid__opt--off,
+.paygrid__opt--off:hover {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
 .totals__crypto {
   display: inline-flex;
   align-items: center;
@@ -768,26 +1079,6 @@ button {
   padding: 10px 16px;
   max-width: 100%;
   box-sizing: border-box;
-}
-
-.success {
-  margin: auto 0;
-  padding: 48px 12px;
-  text-align: center;
-}
-
-.success h2 {
-  font-size: 26px;
-  letter-spacing: 0.1em;
-  margin-bottom: 16px;
-}
-
-.success__note {
-  max-width: 300px;
-  margin: 16px auto 0;
-  font-size: 12px;
-  line-height: 1.7;
-  color: var(--gray);
 }
 
 @media (max-width: 768px) {

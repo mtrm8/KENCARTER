@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<!--
+  KEN CARTER — SEASON 01 ORDER CONFIRMATION / PAYMENT INSTRUCTIONS
+  ─────────────────────────────────────────────────────────────────
+  This template is dispatched by the Cloudflare Worker (worker/) through
+  StaticForms' auto-reply after a payment is verified via IPN. The browser
+  never submits anything directly.
+
+  ACTIVATE (Static Forms dashboard → Forms → your form):
+    1. AUTO-REPLY tab → Enabled ON.
+       Subject:  SEASON 01 — YOUR FILES & LEASE AGREEMENT
+    2. Paste EVERYTHING below <body> into the message body.
+    3. Save. The Worker's POST triggers this email with live download links.
+
+  DYNAMIC PLACEHOLDERS (injected by worker/src/index.js on IPN 'finished'):
+    {{field:ArtistName}}        → greeting name, derived from buyer email
+    {{field:PaymentDetailsHtml}}→ order summary + per-beat download links
+                                  for exactly what was purchased
+-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="supported-color-schemes" content="dark">
+    <title>KEN CARTER — ORDER INSTRUCTIONS</title>
+    <style type="text/css">
+        :root { color-scheme: dark; supported-color-schemes: dark; }
+        body { margin: 0; padding: 0; width: 100% !important; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+        table { border-collapse: collapse !important; }
+        img { border: 0; outline: none; text-decoration: none; }
+        a { text-decoration: none; }
+        @media only screen and (max-width: 480px) {
+            .kc-pad { padding-left: 18px !important; padding-right: 18px !important; }
+            .kc-h1 { font-size: 15px !important; letter-spacing: 2px !important; }
+            .kc-logo { font-size: 21px !important; }
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #000000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #ffffff;">
+
+    <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">SEASON 01 — ORDER CONFIRMED. YOUR PAYMENT INSTRUCTIONS ARE INSIDE.&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>
+
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" bgcolor="#000000" style="background-color: #000000;">
+        <tr>
+            <td align="center" style="padding: 24px 12px;">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="600" class="kc-shell" style="max-width: 600px; width: 100%; margin: 0 auto; background-color: #000000; border: 1px solid #222222;">
+                    <!-- HEADER LOGO -->
+                    <tr>
+                        <td align="center" class="kc-pad" style="padding: 40px 20px 20px 20px; border-bottom: 1px solid #1a1a1a;">
+                            <div style="border: 3px solid #ffffff; padding: 10px 20px; display: inline-block; letter-spacing: 2px;">
+                                <span style="font-size: 10px; font-weight: 800; display: block; text-transform: uppercase;">EPIC CONTENT</span>
+                                <span class="kc-logo" style="font-size: 26px; font-weight: 900; text-transform: uppercase; line-height: 1;">KEN CARTER</span>
+                                <span style="font-size: 10px; font-weight: 800; display: block; text-transform: uppercase;">EPIC CONTENT</span>
+                            </div>
+                        </td>
+                    </tr>
+                    <!-- MAIN TITLE -->
+                    <tr>
+                        <td align="center" class="kc-pad" style="padding: 30px 20px 10px 20px;">
+                            <h1 class="kc-h1" style="font-size: 18px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; margin: 0; color: #ffffff;">SEASON 01 — ORDER CONFIRMATION</h1>
+                            <p style="font-size: 12px; color: #888888; margin-top: 5px; text-transform: uppercase; letter-spacing: 1px;">STRICTLY LIMITED LEASES</p>
+                        </td>
+                    </tr>
+                    <!-- DYNAMIC CONTENT AREA -->
+                    <tr>
+                        <td class="kc-pad" style="padding: 20px 30px; font-size: 14px; line-height: 1.6; color: #cccccc;">
+                            <p style="margin-bottom: 20px; color: #ffffff;">Hey {{field:ArtistName}},</p>
+                            <p style="margin-bottom: 25px;">Thank you for securing your production from <strong>KEN CARTER</strong>. Your reservation is set for <strong>SEASON 01</strong>.</p>
+
+                            <!-- INSTRUCTIONS BOX -->
+                            <div style="background-color: #0d0d0d; border: 1px solid #333333; padding: 20px; margin-bottom: 25px;">
+                                <div style="font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #888888; margin-bottom: 15px;">PAYMENT DETAILS</div>
+                                {{field:PaymentDetailsHtml}}
+                            </div>
+
+                            <p style="font-size: 13px; color: #888888; margin-bottom: 25px;">
+                                *Once payment is verified, your untagged high-quality audio files (WAV/MP3) and official lease license contract will be issued to this email immediately.
+                            </p>
+                        </td>
+                    </tr>
+                    <!-- FOOTER -->
+                    <tr>
+                        <td align="center" class="kc-pad" style="padding: 30px 20px; border-top: 1px solid #1a1a1a; background-color: #050505;">
+                            <p style="font-size: 11px; color: #555555; margin: 0 0 10px 0; letter-spacing: 1px;">KEN CARTER — ALL RIGHTS RESERVED</p>
+                            <p style="font-size: 10px; color: #444444; margin: 0;"><a href="https://kencarter.abrdns.com" target="_blank" style="color: #666666; text-decoration: none;">kencarter.abrdns.com</a></p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

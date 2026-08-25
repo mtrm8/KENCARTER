@@ -13,7 +13,6 @@
   <link rel="preload" as="image" href="assets/beat5.jpg?v=2">
   <link rel="preload" as="image" href="assets/beat6.jpg?v=2">
   <link rel="preload" as="image" href="assets/beat7.jpg?v=2">
-<link rel="preload" as="image" href="assets/beat8.jpg?v=2">
 </head>
 <body>
 
@@ -26,26 +25,29 @@
   </div>
 
   <div class="config-warning" id="config-warning" hidden>
-    STORE OWNER: ORDERS ARE DISABLED &mdash; SET YOUR STATIC FORMS API KEY ON LINE 2 OF SCRIPT.JS
+    STORE OWNER: CHECKOUT IS DISABLED &mdash; SET YOUR CLOUDFLARE WORKER URL AT THE TOP OF SCRIPT.JS
   </div>
-
-  <div class="config-warning" id="order-error" hidden></div>
 
   <header class="header">
     <img src="assets/logo.jpg?v=2" alt="KEN CARTER" class="header__logo" fetchpriority="high">
   </header>
 
-  <main>
+    <section class="season" aria-label="Season 01 closing countdown">
+      <span class="season__kicker">SEASON 01 CLOSES IN</span>
+      <p class="season__timer" id="season-timer">&mdash;</p>
+      <p class="season__status">SEASON 01 LOCKS WHEN TIMER EXPIRES OR LEASES SELL OUT.</p>
+    </section>
+
     <section class="offer" aria-label="Offer">
       <span class="offer__kicker">LIMITED OFFER</span>
-      <p class="offer__title">PICK ANY 2 BEATS &mdash; THE 3RD IS FREE</p>
+      <p class="offer__title">SEASON 01 &mdash; PICK ANY 2 BEATS, THE 3RD IS FREE</p>
       <p class="offer__sub">YOUR CHOICE &mdash; MARK YOUR FREE BEAT IN THE CART AT CHECKOUT</p>
     </section>
     <section class="grid" id="grid"></section>
   </main>
 
   <footer class="footer">
-    <p>KEN CARTER &copy; 2026 &mdash; ALL BEATS $14.95 &mdash; PICK 2, GET 1 FREE</p>
+    <p>KEN CARTER &copy; 2026 &mdash; SEASON 01 &mdash; ALL BEATS $14.95 &mdash; PICK 2, GET 1 FREE</p>
     <p class="footer__note">EVERY TRACK IS A LIMITED LEASE &mdash; EACH BEAT IS CAPPED AT A FIXED NUMBER OF LICENSES AND MARKED SOLD OUT FOREVER ONCE THEY'RE GONE.</p>
   </footer>
   </div>
@@ -85,13 +87,42 @@
         <p class="order-form__error" id="form-error" hidden></p>
         <button class="btn btn--solid" type="submit" id="submit-btn">SUBMIT ORDER</button>
       </form>
-
-      <div class="success" id="success" hidden>
-        <h2>ORDER CONFIRMED</h2>
-        <p class="success__note">PAYMENT INSTRUCTIONS WILL BE SENT TO YOUR EMAIL &mdash; FILES FOLLOW AS SOON AS YOUR PAYMENT ARRIVES.</p>
-      </div>
     </div>
   </aside>
+
+  <div class="payscreen" id="payscreen" hidden role="dialog" aria-modal="true" aria-label="Payment instructions">
+    <div class="payscreen__card">
+      <button class="payscreen__close" id="payscreen-close" aria-label="Close">&times;</button>
+
+      <span class="payscreen__kicker">SEASON 01 &mdash; INSTANT CHECKOUT</span>
+      <h2 class="payscreen__title">COMPLETE YOUR PAYMENT</h2>
+
+      <span class="np-status" id="np-status">PREPARING&hellip;</span>
+
+      <dl class="payscreen__amounts">
+        <div><dt>TOTAL DUE</dt><dd id="payscreen-total">$0.00</dd></div>
+        <div><dt>SEND EXACTLY</dt><dd class="payscreen__equiv" id="payscreen-equiv">&mdash;</dd></div>
+      </dl>
+
+      <div class="payscreen__tabs" id="payscreen-tabs"></div>
+
+      <p class="payscreen__alert" id="payscreen-alert" hidden></p>
+
+      <div id="payscreen-payblock" hidden>
+        <code class="payscreen__address" id="payscreen-address"></code>
+        <button class="payscreen__copy" id="copy-address" type="button">COPY ADDRESS</button>
+      </div>
+
+      <p class="payscreen__network" id="payscreen-network"></p>
+
+      <div class="payscreen__dls" id="payscreen-downloads-wrap" hidden>
+        <span class="payscreen__label">YOUR FILES &mdash; UNLOCKED ON PAYMENT VERIFICATION</span>
+        <div id="payscreen-downloads"></div>
+      </div>
+
+      <p class="payscreen__note">Send the exact amount to the secure address above. NOWPayments verifies your payment on-chain and your untagged files unlock here &amp; by email automatically.</p>
+    </div>
+  </div>
 
   <script src="script.js"></script>
 </body>

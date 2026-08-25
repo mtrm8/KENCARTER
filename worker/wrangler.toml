@@ -1,0 +1,15 @@
+name = "kencarter-checkout"
+main = "src/index.js"
+compatibility_date = "2026-08-01"
+
+# Orders registry (payment_id ↔ order, release state). Create once:
+#   npx wrangler kv namespace create ORDERS   → paste the returned id below
+[[kv_namespaces]]
+binding = "ORDERS"
+id = "8283af4c27774baea53f34f615be0410"
+
+[vars]
+# Lock browser access to your storefront origin (recommended):
+# ALLOWED_ORIGIN = "https://www.kencarter.abrdns.com"
+# Only needed if the webhook URL differs from this worker's own /api/ipn:
+# IPN_CALLBACK_URL = "https://<your-worker-host>/api/ipn"

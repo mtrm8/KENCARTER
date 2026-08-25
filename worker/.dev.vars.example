@@ -1,0 +1,5 @@
+# Local dev secrets — copy to worker/.dev.vars (git-ignored) and fill in.
+NOWPAYMENTS_API_KEY=your-nowpayments-api-key
+NOWPAYMENTS_IPN_SECRET=your-ipn-secret-from-dashboard
+STATICFORMS_API_KEY=sf_your_staticforms_key
+BEAT_LINKS={"beat1":"https://drive.google.com/uc?export=download&id=FILE_ID_1","beat2":"…"}
