@@ -831,7 +831,7 @@ async function startNpPayment(sym) {
 function renderNpPayment() {
   if (!npPayment) return;
   $("payscreen-equiv").textContent = `${npPayment.pay_amount} ${String(npPayment.pay_currency).toUpperCase()}`;
-  $("payscreen-network").textContent = "RATE LOCKED BY NOWPAYMENTS";
+  $("payscreen-network").textContent = "SEND VIA TRON (TRC-20) NETWORK";
   $("payscreen-address").textContent = npPayment.pay_address;
   $("payscreen-payblock").hidden = false;
   const btn = $("copy-address");

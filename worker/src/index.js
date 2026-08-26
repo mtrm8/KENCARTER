@@ -4,6 +4,11 @@
  * All NOWPayments traffic + download-link custody lives HERE, never in the
  * site's public JavaScript.
  *
+ * Settlement: TRON network (TRX & TRC-20 tokens, e.g. USDT)
+ *   Merchant wallet: TDPB13TMNjRMf3VoCy561CPVhbMqizkEdJ
+ *   Payments route through NOWPayments to ensure proper conversion
+ *   and on-chain verification before files are released.
+ *
  * Routes
  *   POST /api/checkout            create a NOWPayments payment for a cart
  *   GET  /api/status?order_id=…   live payment status (+ links ONLY if released)
