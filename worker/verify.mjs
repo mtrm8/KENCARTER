@@ -3,6 +3,11 @@
 // without requiring full worker instantiation.
 
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+const here = fileURLToPath(new URL(".", import.meta.url));
+const root = fileURLToPath(new URL("..", import.meta.url));
 
 const C = {
   reset: "\x1b[0m", bold: "\x1b[1m", green: "\x1b[32m", red: "\x1b[31m",
@@ -15,10 +20,10 @@ function INFO(msg) { console.log(`${C.cyan}ℹ ${msg}${C.reset}`); }
 
 // 1. Verify LICENSE.txt content
 INFO("Step 1: LICENSE.txt validation");
-const licensePath = "../LICENSE.txt";
+const licensePath = root + "LICENSE.txt";
 const fs = await import("node:fs");
 const licenseText = fs.readFileSync(licensePath, "utf8");
-const workerPath = "./src/index.js";
+const workerPath = here + "src/index.js";
 const workerCode = fs.readFileSync(workerPath, "utf8");
 
 // Robust helper: slice the worker source between two stable markers so
@@ -52,7 +57,7 @@ if (licenseFail === 0) {
 
 // 1b. Verify EXCLUSIVE_LICENSE.txt content and worker sync
 INFO("\nStep 1b: EXCLUSIVE_LICENSE.txt validation");
-const exclusiveLicensePath = "../EXCLUSIVE_LICENSE.txt";
+const exclusiveLicensePath = root + "EXCLUSIVE_LICENSE.txt";
 const exclusiveLicenseText = fs.readFileSync(exclusiveLicensePath, "utf8");
 const exclusiveChecks = [
   ["EXCLUSIVE MASTER RIGHTS LICENSE AGREEMENT", "has exclusive master rights header"],
@@ -87,8 +92,21 @@ if (srcExclusiveMatch) {
   FAIL("Worker missing EXCLUSIVE_LICENSE_TEXT constant");
 }
 
+// Standard lease copy must also stay byte-identical to its physical deliverable
+const srcLeaseMatch = workerCode.match(/const LICENSE_TEXT = `([\s\S]*?)`;/);
+if (srcLeaseMatch) {
+  const norm = (s) => s.replace(/\r\n/g, "\n").trim();
+  if (norm(srcLeaseMatch[1]) === norm(licenseText)) {
+    PASS("Worker LICENSE_TEXT matches physical LICENSE.txt");
+  } else {
+    FAIL("Worker LICENSE_TEXT diverges from physical LICENSE.txt");
+  }
+} else {
+  FAIL("Worker missing LICENSE_TEXT constant");
+}
+
 // Frontend download link must point at the physical file
-const frontendCode = fs.readFileSync("../script.js", "utf8");
+const frontendCode = fs.readFileSync(root + "script.js", "utf8");
 if (frontendCode.includes('a.href = "EXCLUSIVE_LICENSE.txt"')) {
   PASS("Frontend exclusive license download links to EXCLUSIVE_LICENSE.txt");
 } else {
@@ -162,7 +180,7 @@ if (statusHandler) {
   const checks = [
     ["rec.released", "checks if order is released"],
     ["beatLinks.*env", "fetches beat links from env.BEAT_LINKS"],
-    ["links\\s*=\\s*rec\\.items\\.map", "builds links array for response"],
+    ["enrichedLinks\\s*=\\s*rec\\.items", "builds links array for response"],
     ["EXCLUSIVE_LICENSE_TEXT", "selects exclusive license text for exclusive orders"],
     ["license", "includes license in response"]
   ];

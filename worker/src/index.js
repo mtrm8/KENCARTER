@@ -195,16 +195,19 @@ function deliveryHtml(rec, links) {
   );
 }
 
-const LICENSE_TEXT = `# LICENSE AGREEMENT FOR BEAT STORE PRODUCTS
+// Full legal text for the standard non-exclusive lease. This constant is the
+// worker's email/API copy and MUST match the physical deliverable at the site
+// root: LICENSE.txt (keep both identical when editing).
+const LICENSE_TEXT = `# License Agreement for Beat Store Products
 
-## STANDARD NON-EXCLUSIVE LEASE
+## Standard Non-Exclusive Lease
 
 This license grants the purchaser a **standard non-exclusive lease** for commercial and streaming use of the beats included in this store. The lease applies to:
 
 - **Commercial Use**: Public performance, licensing, distribution, and any other commercial exploitation of the beats.
 - **Streaming Services**: Inclusion in YouTube, Spotify, Apple Music, Amazon Music, and other streaming platforms.
 
-## MANDATORY CREDIT
+## Mandatory Credit
 
 All deliverables must include the following mandatory credit:
 
@@ -212,28 +215,30 @@ All deliverables must include the following mandatory credit:
 
 This credit must appear prominently on all digital copies, downloads, and promotional materials associated with the purchased beats.
 
-## OWNERSHIP AND MASTER RIGHTS
+## Ownership and Master Rights
 
 ### Creator Retention
+
 **Ken Carter** (the creator) retains **all ownership, copyright, and master rights** to the beats, recordings, and related intellectual property. No transfer of ownership or master rights occurs upon purchase. The purchaser receives only a limited, non-exclusive license to use the beats under the terms specified above.
 
 ### Licensor Responsibilities
+
 - The licensor agrees to honor the terms of this license for all purchasers.
 - The licensor shall not assign, transfer, or sublicense the beats beyond the scope of this license.
 - The licensor warrants that the beats are original creations and that the licensor has full authority to grant this license.
 
-## DELIVERY AND DISTRIBUTION
+## Delivery and Distribution
 
 This license is automatically included in:
 
-1. **Download Payload** — Every digital download package shipped with the beats includes the license agreement.
-2. **Delivery Email** — Upon successful payment and verification, a delivery email is sent to the purchaser's registered email address containing the license terms and mandatory credit placement instructions.
+1. **Download Payload** – Every digital download package shipped with the beats includes the license agreement.
+2. **Delivery Email** – Upon successful payment and verification, a delivery email is sent to the purchaser's registered email address containing the license terms and mandatory credit placement instructions.
 
-## TERMINATION
+## Termination
 
 Either party may terminate this license by providing written notice. Upon termination, the purchaser must cease all commercial and streaming use of the beats and remove the mandatory credit from all distributions.
 
-## GOVERNING LAW
+## Governing Law
 
 This agreement is governed by the laws of the jurisdiction in which Ken Carter resides, without regard to conflict of law principles.
 
@@ -388,11 +393,15 @@ async function handleCheckout(request, env) {
   }
   if (!(total > 0)) return json(env, { error: "INVALID TOTAL" }, 400);
 
-  // Calculate exclusive vs basic pricing
+  // Calculate exclusive vs basic pricing. A beat is exclusive when either the
+  // client's explicit exclusivePicks list or the item.type marker agrees.
   const basicPrice = 14.95;
   const exclusivePrice = 299.95;
-  const basicItems = items.filter((item, idx) => !exclusivePicks || !exclusivePicks.includes(item.id));
-  const exclusiveItems = items.filter((item, idx) => exclusivePicks && exclusivePicks.includes(item.id));
+  const isExPick = (item) =>
+    (Array.isArray(exclusivePicks) && exclusivePicks.includes(item.id)) ||
+    item.type === "exclusive";
+  const basicItems = items.filter((item) => !isExPick(item));
+  const exclusiveItems = items.filter((item) => isExPick(item));
 
   // Reuse the caller's order id when switching coins mid-checkout.
   const id = order_id && /^KC-[A-Z0-9-]{3,32}$/.test(order_id)
@@ -448,18 +457,14 @@ async function handleStatus(url, env) {
   // Links exist on this response ONLY after the IPN handler marked released.
   if (rec.released) {
     const map = beatLinks(env);
-    const links = rec.items.map(({ id: beatId, title }) => ({ title, url: map[beatId] })).filter((l) => l.url);
-
-    // Check which beats are exclusive_sold
-    const exclusiveBeats = await Promise.all(rec.items.map(({ id: beatId }) => isBeatExclusiveSold(env, beatId)));
-
-    const enrichedLinks = links.map((link, idx) => {
-      const beatId = rec.items[idx].id;
-      return {
-        ...link,
-        isExclusive: exclusiveBeats[idx] || false
-      };
-    });
+    // Carry each beat's exclusive flag alongside its link so the response is
+    // always correctly paired even when a beat has no configured URL.
+    const enrichedLinks = rec.items
+      .map(({ id: beatId, title, isExclusive }) => {
+        const url = map[beatId];
+        return url ? { title, url, isExclusive: isExclusive || false } : null;
+      })
+      .filter(Boolean);
 
     const license = enrichedLinks.some((l) => l.isExclusive)
       ? EXCLUSIVE_LICENSE_TEXT

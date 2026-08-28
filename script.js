@@ -726,7 +726,10 @@ function setNpStatus(text, mode) {
   const el = $("np-status");
   if (!el) return;
   el.textContent = text;
-  el.className = "np-status" + (mode ? " np-status--" + mode : "");
+  const cls = ["np-status"];
+  if (mode) cls.push("np-status--" + mode);
+  if (mode === "ok" || mode === "exclusive") cls.push("visible");
+  el.className = cls.join(" ");
 }
 
 async function workerRequest(path, opts = {}) {
@@ -870,7 +873,8 @@ async function startNpPayment(sym) {
         freeTitles: payScreenOrder.freeTitles || [],
         subtotal: payScreenOrder.subtotal,
         discount: payScreenOrder.discount,
-        items: payScreenOrder.items
+        items: payScreenOrder.items,
+        exclusivePicks: payScreenOrder.exclusivePicks || []
       })
     });
     const alertEl = $("payscreen-alert");
@@ -907,16 +911,11 @@ function startNpPolling(orderId) {
       const s = await workerRequest("/api/status?order_id=" + encodeURIComponent(orderId));
       if (s.released) {
         stopNpPolling();
-        const statusEl = $("np-status");
-        if (statusEl) {
-          statusEl.classList.add("visible");
-          if (s.links && s.links.some((l) => l.isExclusive)) {
-            statusEl.classList.add("np-status--exclusive");
-          } else {
-            statusEl.classList.add("np-status--ok");
-          }
-        }
-        setNpStatus(NP_STATUS_COPY.finished, "ok");
+        const hasExclusive = s.links && s.links.some((l) => l.isExclusive);
+        setNpStatus(
+          hasExclusive ? NP_STATUS_COPY.exclusive : NP_STATUS_COPY.finished,
+          hasExclusive ? "exclusive" : "ok"
+        );
         revealDownloads(s.links || []);
         return;
       }
@@ -990,6 +989,13 @@ function revealDownloads(links) {
     a.href = "EXCLUSIVE_LICENSE.txt";
     a.download = "EXCLUSIVE_LICENSE.txt";
     a.textContent = "DOWNLOAD EXCLUSIVE LICENSE";
+    list.appendChild(a);
+  } else if (links && links.length) {
+    const a = document.createElement("a");
+    a.className = "payscreen__dl";
+    a.href = "LICENSE.txt";
+    a.download = "LICENSE.txt";
+    a.textContent = "DOWNLOAD LICENSE";
     list.appendChild(a);
   }
   if (links && links.length) $("payscreen-downloads-wrap").hidden = false;
