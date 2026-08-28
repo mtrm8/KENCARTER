@@ -4,19 +4,9 @@
 const WORKER_URL = "https://kencarter-checkout.kencarter-store.workers.dev";
 
 const PRICE = 14.95;
+const EXCLUSIVE_PRICE = 299.95;
 const LOW_STOCK_AT = 3;
 
-// Details sourced from the "Beat Covers" folder: BEAT XX (NAME) - BPM - KEY.
-// leases = total leases available for the beat, left = leases still on sale.
-// NOTHING SOLD YET — every beat starts at full stock. After an order comes in,
-// drop `left` by the number sold; set left:0 (or soldOut:true) to archive it.
-//
-// ORDERING: the grid is sorted automatically — NEWEST BEATS AT THE TOP,
-// OLDEST AT THE BOTTOM (highest "01 OF 07" tag number first). Sold-out beats
-// sink below the live catalog as an archive, also newest first. To release a
-// new beat just append it to the END of this array as BEAT 08, 09, ... and
-// it appears at the top of the grid on its own. Numbers are derived from this
-// array's order, so they stay permanent per beat.
 const LEASES_PER_BEAT = 10;
 
 const BEATS = [
@@ -26,10 +16,9 @@ const BEATS = [
   { id: "beat4", title: "BEAT 04", name: "$$$",                img: "assets/beat4.jpg?v=2", bpm: 140, key: "G MIN",  tag: "SEASON 01", leases: LEASES_PER_BEAT },
   { id: "beat5", title: "BEAT 05", name: "HIGH VIEW",          img: "assets/beat5.jpg?v=2", bpm: 168, key: "C MIN",  tag: "SEASON 01", leases: LEASES_PER_BEAT },
   { id: "beat6", title: "BEAT 06", name: "PROTOCOL",           img: "assets/beat6.jpg?v=2", bpm: 135, key: "G# MIN", tag: "SEASON 01", leases: LEASES_PER_BEAT },
-  { id: "beat7", title: "BEAT 07", name: "LAST SEAT",          img: "assets/beat7.jpg?v=2", bpm: 140, key: "G# MIN", tag: "SEASON 01", releaseAt: "2026-08-23T20:00:00", leases: LEASES_PER_BEAT }
+  { id: "beat7", title: "BEAT 07", name: "LAST SEAT",          img: "assets/beat7.jpg?v=2", bpm: 140, key: "G# MIN", tag: "SEASON 01", releaseAt: "2026-08-23T20:00:00Z", leases: LEASES_PER_BEAT }
 ].map((b) => ({ ...b, left: b.left ?? b.leases }));
 
-// ── SEASON 02 catalog — placeholder metadata; swap covers/details before launch.
 const SEASON2_BEATS = Array.from({ length: 7 }, (_, i) => ({
   id: `s2-beat${i + 1}`,
   title: `BEAT ${String(i + 1).padStart(2, "0")}`,
@@ -40,18 +29,16 @@ const SEASON2_BEATS = Array.from({ length: 7 }, (_, i) => ({
   leases: LEASES_PER_BEAT
 })).map((b) => ({ ...b, left: b.leases }));
 
-let CATALOG = BEATS; // active selling list, swapped by the season scheduler
+let CATALOG = BEATS;
 
 const TICKER_TEXT = "KEN CARTER \u2014 SEASON 01 IS LIVE \u2014 STRICTLY LIMITED LEASES \u2014 ALL BEATS $14.95 \u2014 PICK 2, GET 1 FREE \u2014 ";
 
-// ── Season scheduling — every moment expressed in UTC (Z) ───────────────
-const S01_CLOSE_AT = "2026-08-29T20:00:00Z";  // Season 01 locks
-const S02_OPEN_AT  = "2026-08-30T20:00:00Z";  // Season 02 launches
-const S02_CLOSE_AT = "2026-09-12T20:00:00Z";  // Season 02 locks until next season
+const S01_CLOSE_AT = "2026-08-29T20:00:00Z";
+const S02_OPEN_AT  = "2026-08-30T20:00:00Z";
+const S02_CLOSE_AT = "2026-09-12T20:00:00Z";
 const DAY_MS       = 24 * 60 * 60 * 1000;
 let storeTimer     = null;
 
-// SEASON 02 blind rollout: beat k (1-based) is live on UTC day k of the season.
 function s02UnlockedCount(now = Date.now()) {
   if (!CATALOG.length) return 0;
   const openDay = Math.floor(Date.parse(S02_OPEN_AT) / DAY_MS);
@@ -74,7 +61,6 @@ function setKicker(text) {
   if (k) k.textContent = text;
 }
 
-// Season section: counts down whichever season is currently on sale.
 function tickSeason() {
   const timerEl = $("season-timer");
   if (!timerEl) return;
@@ -106,11 +92,10 @@ function tickSeason() {
   timerEl.textContent = "NEXT DROP TO BE ANNOUNCED";
 }
 
-// Top strip: hypes the next scheduled moment.
 function tickS02() {
   const el = $("s02-timer");
   if (!el) return;
-  const kicker = document.getElementById("s02-kicker");
+  const kicker = $("s02-kicker");
   const phase = storePhase();
 
   if (phase === "S02") {
@@ -126,13 +111,28 @@ function tickS02() {
   if (kicker) kicker.textContent = "SEASON 02 \u2014 NEXT DROP IN";
   const remaining = Date.parse(S02_OPEN_AT) - Date.now();
   el.textContent = remaining <= 0 ? "OPENING\u2026" : formatRemaining(remaining);
-}const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+}
+
+function tickBeatCountdowns() {
+  CATALOG.forEach((beat) => {
+    if (!beat.releaseAt) return;
+    const timerEl = $("countdown-" + beat.id);
+    if (!timerEl) return;
+    const rem = releaseDate(beat).getTime() - Date.now();
+    if (rem <= 0) {
+      applyPhase(true);
+    } else {
+      timerEl.textContent = formatRemaining(rem);
+    }
+  });
+}
+
+const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 
 const releaseDate = (b) => (b.releaseAt ? new Date(b.releaseAt) : null);
 const isReleased = (b) => !b.releaseAt || Date.now() >= releaseDate(b).getTime();
 const isSoldOut = (b) => b.soldOut || b.left <= 0;
 
-// Grid order: live catalog newest-first, then the sold-out archive newest-first.
 const byNewest = (a, b) => BEATS.indexOf(b) - BEATS.indexOf(a);
 function renderOrder(list) {
   return [
@@ -159,6 +159,7 @@ function formatRemaining(ms) {
 
 const selected = new Set();
 const freePicks = new Set();
+const exclusiveSelected = new Set();
 
 const freeCap = () => Math.floor(selected.size / 3);
 
@@ -189,7 +190,6 @@ const backdrop = $("backdrop");
 const BTC_ENDPOINT =
   "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,tether,usd-coin&vs_currencies=usd";
 
-// Settlement coins on NOWPayments — `np` is the NOWPayments currency code.
 const ASSETS = {
   USDT: {
     sym: "USDT", name: "TETHER", id: "tether", np: "usdttrc20",
@@ -217,7 +217,6 @@ const ASSETS = {
   }
 };
 
-// Offered as a low-fee fallback when a coin's network minimum blocks a small cart.
 const FALLBACK_SYMS = ["USDT", "USDC", "LTC"];
 
 const PAYMENT_GROUPS = [
@@ -246,7 +245,6 @@ const PAYMENT_GROUPS = [
 
 let payGroup = null;
 let payAssetSym = null;
-
 
 const CRYPTO_PRICES = {};
 
@@ -277,7 +275,6 @@ function renderCryptoTotal() {
 
 function selectPayment(value) {
   const group = PAYMENT_GROUPS.find((g) => g.value === value) || null;
-  // A below-minimum method can never be chosen — bounce to the next one.
   if (group && isGroupBelowMin(group)) {
     const alt = firstAffordableGroup(value);
     if (!alt) return;
@@ -365,7 +362,6 @@ function stockHTML(beat) {
 
 function cardInner(beat, locked = false, index = 0) {
   if (locked) {
-    // SEASON 02 blind rollout: identity censored, price visible, unclickable.
     const unlockDay = new Date(Date.parse(S02_OPEN_AT) + index * DAY_MS);
     const label = `${MONTHS[unlockDay.getUTCMonth()]} ${unlockDay.getUTCDate()}`;
     return `
@@ -377,8 +373,6 @@ function cardInner(beat, locked = false, index = 0) {
         <div class="card__meta">
           <div class="card__name"><span class="redact-bar" style="width:72%"></span></div>
           <div class="card__specs"><span class="redact-bar redact-bar--thin" style="width:46%"></span></div>
-          <div class="card__price">${money(PRICE)}</div>
-          <div class="btc-price"></div>
           <div class="card__unlock">UNLOCKS ${label} · 20:00 UTC</div>
         </div>
         <button class="card__btn" disabled>LOCKED</button>
@@ -396,11 +390,25 @@ function cardInner(beat, locked = false, index = 0) {
            <span class="card__countdown-label">DROPS ${dropLabel(releaseDate(beat))}</span>
            <span class="card__countdown-timer" id="countdown-${beat.id}">${formatRemaining(releaseDate(beat) - Date.now())}</span>
          </div>`;
+
+  const isLeaseOn = selected.has(beat.id);
+  const isExclusiveOn = exclusiveSelected.has(beat.id);
+
   const action = sold
     ? `<button class="card__btn card__btn--sold" disabled>SOLD OUT</button>`
     : released
-      ? `<button class="card__btn" data-id="${beat.id}" data-on="0" aria-pressed="false"><span class="lbl">ADD</span><span class="lbl">REMOVE</span></button>`
-      : `<button class="card__btn" data-id="${beat.id}" disabled>SOON</button>`;
+      ? `<div class="card__actions">
+           <button class="card__btn card__btn--lease${isLeaseOn ? " card__btn--active" : ""}" data-id="${beat.id}" data-type="lease" aria-pressed="${isLeaseOn}">
+             LEASE ($${PRICE.toFixed(2)})${isLeaseOn ? ' <span class="card__btn-check">&check;</span>' : ""}
+           </button>
+           ${beat.left > 0 ? `
+             <button class="card__btn card__btn--exclusive${isExclusiveOn ? " card__btn--active" : ""}" data-id="${beat.id}" data-type="exclusive" aria-pressed="${isExclusiveOn}">
+               EXCLUSIVE ($${EXCLUSIVE_PRICE.toFixed(2)})${isExclusiveOn ? ' <span class="card__btn-check">&check;</span>' : ""}
+             </button>
+           ` : ""}
+         </div>`
+      : `<button class="card__btn" disabled>SOON</button>`;
+
   return `
     <div class="card__media">
       <img src="${beat.img}" alt="${beat.title}" decoding="async" fetchpriority="high">
@@ -411,7 +419,6 @@ function cardInner(beat, locked = false, index = 0) {
       <div class="card__meta">
         <div class="card__name">${beat.title} <span class="card__name-alt">\u2014 ${beat.name}</span></div>
         <div class="card__specs">${specLine(beat)}</div>
-        <div class="card__price">${money(PRICE)}</div>
         <div class="btc-price"></div>
         ${stockHTML(beat)}
       </div>
@@ -434,51 +441,71 @@ function buildGrid() {
     return;
   }
 
-  // SEASON 02 blind rollout: one new beat unlocks every day from launch.
   const unlockedCount = currentPhase === "S02" ? s02UnlockedCount() : list.length;
   lastUnlockedCount = unlockedCount;
 
   list.forEach((beat, i) => {
     const locked = i >= unlockedCount;
     const card = document.createElement("article");
+    const isSel = selected.has(beat.id) || exclusiveSelected.has(beat.id);
     card.className =
       "card" +
       (isReleased(beat) ? "" : " card--locked") +
       (isSoldOut(beat) ? " card--sold" : "") +
-      (locked ? " card--censored" : "");
+      (locked ? " card--censored" : "") +
+      (isSel ? " card--selected" : "");
     card.id = "card-" + beat.id;
     card.innerHTML = cardInner(beat, locked, i);
     grid.appendChild(card);
   });
 }
 
-function toggle(id) {
+function toggle(id, type) {
   const beat = CATALOG.find((b) => b.id === id);
-  if (!beat || !isReleased(beat) || isSoldOut(beat)) return;
-  if (selected.has(id)) selected.delete(id);
-  else selected.add(id);
-  render();
-}
+  if (!beat || !isReleased(beat)) return;
 
-function removeItem(id) {
-  selected.delete(id);
+  if (isSoldOut(beat)) {
+    if (type === "exclusive") {
+      alert("This beat has already been sold exclusively.");
+    } else {
+      alert("All leases for this beat have been sold.");
+    }
+    return;
+  }
+
+  if (type === "exclusive") {
+    if (exclusiveSelected.has(id)) {
+      exclusiveSelected.delete(id);
+    } else {
+      exclusiveSelected.add(id);
+      selected.delete(id);
+    }
+  } else {
+    if (selected.has(id)) {
+      selected.delete(id);
+    } else {
+      selected.add(id);
+      exclusiveSelected.delete(id);
+    }
+  }
   render();
 }
 
 function totals() {
-  const n = selected.size;
-  const subtotal = n * PRICE;
+  const basicCount = selected.size;
+  const exclusiveCount = exclusiveSelected.size;
+  const n = basicCount + exclusiveCount;
+  const subtotal = basicCount * PRICE + exclusiveCount * EXCLUSIVE_PRICE;
   const freeCount = [...freePicks].filter((id) => selected.has(id)).length;
   const discount = freeCount * PRICE;
-  return { n, subtotal, freeCount, discount, total: subtotal - discount };
+  const total = Math.max(0, subtotal - discount);
+  return { n, exclusiveN: exclusiveCount, basicCount, exclusiveCount, subtotal, freeCount, discount, total };
 }
 
 function render() {
   const { n, subtotal, discount, total } = totals();
 
-  // Cart size changed → re-check which payment methods remain affordable.
   updatePaygridLocks();
-  // If the selected method just became unaffordable, fall back automatically.
   if (n > 0 && payGroup && isGroupBelowMin(payGroup)) {
     const alt = firstAffordableGroup();
     if (alt) selectPayment(alt.value);
@@ -493,11 +520,29 @@ function render() {
   CATALOG.forEach((b) => {
     if (!isReleased(b) || isSoldOut(b)) return;
     const card = $("card-" + b.id);
-    const on = selected.has(b.id);
-    card.classList.toggle("card--selected", on);
-    const btn = card.querySelector(".card__btn");
-    btn.dataset.on = on ? "1" : "0";
-    btn.setAttribute("aria-pressed", String(on));
+    if (!card) return;
+    const isLeaseOn = selected.has(b.id);
+    const isExclusiveOn = exclusiveSelected.has(b.id);
+
+    card.classList.toggle("card--selected", isLeaseOn || isExclusiveOn);
+
+    const leaseBtn = card.querySelector(".card__btn--lease");
+    if (leaseBtn) {
+      leaseBtn.classList.toggle("card__btn--active", isLeaseOn);
+      leaseBtn.setAttribute("aria-pressed", isLeaseOn ? "true" : "false");
+      leaseBtn.innerHTML = isLeaseOn
+        ? `LEASE ($${PRICE.toFixed(2)}) <span class="card__btn-check">&check;</span>`
+        : `LEASE ($${PRICE.toFixed(2)})`;
+    }
+
+    const exclusiveBtn = card.querySelector(".card__btn--exclusive");
+    if (exclusiveBtn) {
+      exclusiveBtn.classList.toggle("card__btn--active", isExclusiveOn);
+      exclusiveBtn.setAttribute("aria-pressed", isExclusiveOn ? "true" : "false");
+      exclusiveBtn.innerHTML = isExclusiveOn
+        ? `EXCLUSIVE ($${EXCLUSIVE_PRICE.toFixed(2)}) <span class="card__btn-check">&check;</span>`
+        : `EXCLUSIVE ($${EXCLUSIVE_PRICE.toFixed(2)})`;
+    }
   });
 
   cartbar.disabled = n === 0;
@@ -516,7 +561,7 @@ function render() {
   const missing = cap - freePicks.size;
   if (n === 0) {
     hint.hidden = true;
-  } else if (n % 3 === 2) {
+  } else if (selected.size % 3 === 2) {
     hint.hidden = false;
     hint.textContent = "ONE MORE \u2014 YOUR NEXT BEAT COMES FREE.";
   } else if (missing > 0) {
@@ -532,18 +577,33 @@ function render() {
 
   const list = $("cart-items");
   list.innerHTML = "";
+
+  // Basic lease items
   CATALOG.filter((b) => selected.has(b.id)).forEach((b) => {
     const picked = freePicks.has(b.id);
     const li = document.createElement("li");
     if (picked) li.className = "cart-item--free";
     li.innerHTML = `
       <img src="${b.img}" alt="">
-      <span class="cart-items__name">${b.title} <span class="cart-items__name-alt">\u2014 ${b.name}</span><span class="cart-items__specs">${specLine(b)} \u2014 ${stockLine(b)}</span></span>
+      <span class="cart-items__name">${b.title} <span class="cart-items__name-alt">\u2014 ${b.name} (LEASE)</span><span class="cart-items__specs">${specLine(b)} \u2014 ${stockLine(b)}</span></span>
       <span class="cart-items__price${picked ? " cart-items__price--free" : ""}">${picked ? "FREE" : money(PRICE)}</span>
       ${picked ? `<button class="cart-items__free" data-free="${b.id}">REMOVE FREE</button>` : cap > freePicks.size ? `<button class="cart-items__free" data-free="${b.id}">MAKE FREE</button>` : ""}
-      <button class="cart-items__remove" data-id="${b.id}">REMOVE</button>`;
+      <button class="cart-items__remove" data-id="${b.id}" data-type="lease">REMOVE</button>`;
     list.appendChild(li);
   });
+
+  // Exclusive items
+  CATALOG.filter((b) => exclusiveSelected.has(b.id)).forEach((b) => {
+    const li = document.createElement("li");
+    li.className = "cart-item--exclusive";
+    li.innerHTML = `
+      <img src="${b.img}" alt="">
+      <span class="cart-items__name">${b.title} <span class="cart-items__name-alt">\u2014 ${b.name} (EXCLUSIVE)</span><span class="cart-items__specs">${specLine(b)} \u2014 EXCLUSIVE LICENSE</span></span>
+      <span class="cart-items__price">${money(EXCLUSIVE_PRICE)}</span>
+      <button class="cart-items__remove" data-id="${b.id}" data-type="exclusive">REMOVE</button>`;
+    list.appendChild(li);
+  });
+
   $("cart-empty").hidden = n !== 0;
 
   renderCryptoTotal();
@@ -554,7 +614,7 @@ function openDrawer() {
   drawer.setAttribute("aria-hidden", "false");
   backdrop.hidden = false;
   document.body.style.overflow = "hidden";
-  loadMins(); // refresh network minimums so paygrid locks stay current
+  loadMins();
 }
 
 function closeDrawer() {
@@ -586,7 +646,6 @@ function submitOrder(e) {
     return;
   }
 
-  // Backstop: never allow a below-minimum method through to checkout.
   if (payGroup && isGroupBelowMin(payGroup)) {
     const alt = firstAffordableGroup();
     if (alt) {
@@ -604,25 +663,39 @@ function submitOrder(e) {
     return;
   }
 
-  const payment = $("payment").value;  const chosen = CATALOG.filter((b) => selected.has(b.id));
+  const chosen = CATALOG.filter((b) => selected.has(b.id));
+  const exclusiveChosen = CATALOG.filter((b) => exclusiveSelected.has(b.id));
+
+  const items = [
+    ...chosen.map((b) => ({ id: b.id, title: b.title, type: "lease" })),
+    ...exclusiveChosen.map((b) => ({ id: b.id, title: b.title, type: "exclusive" }))
+  ];
+
+  const labeled = [
+    ...chosen.map((b) => `${b.title} LEASE${freePicks.has(b.id) ? " (FREE)" : ""}`),
+    ...exclusiveChosen.map((b) => `${b.title} EXCLUSIVE`)
+  ];
+
   lastOrder = {
     email,
     group: payGroup,
-    labeled: chosen.map((b) => `${b.title}${freePicks.has(b.id) ? " (FREE)" : ""}`),
+    labeled,
     freeTitles: chosen.filter((b) => freePicks.has(b.id)).map((b) => b.title),
     subtotal,
     discount,
     total,
-    items: chosen.map((b) => ({ id: b.id, title: b.title }))
+    items,
+    exclusivePicks: exclusiveChosen.map((b) => b.id),
+    exclusiveTitles: exclusiveChosen.map((b) => b.title)
   };
 
-  // Order + delivery are handled entirely by the Worker: the popup creates
-  // the NOWPayments payment and links unlock only on verified 'finished'.
   finishOrder();
 }
 
 function finishOrder() {
   selected.clear();
+  exclusiveSelected.clear();
+  freePicks.clear();
   render();
   closeDrawer();
   showPayscreen(lastOrder);
@@ -645,7 +718,8 @@ const NP_STATUS_COPY = {
   partially_paid: "UNDERPAID \u2014 SEND THE MISSING AMOUNT",
   failed: "PAYMENT FAILED \u2014 PICK ANOTHER COIN TO RETRY",
   refunded: "PAYMENT REFUNDED",
-  expired: "PAYMENT EXPIRED \u2014 PICK ANOTHER COIN TO RETRY"
+  expired: "PAYMENT EXPIRED \u2014 PICK ANOTHER COIN TO RETRY",
+  exclusive: "EXCLUSIVE MASTER RIGHTS — BEAT RETIRED FROM CATALOG"
 };
 
 function setNpStatus(text, mode) {
@@ -655,8 +729,6 @@ function setNpStatus(text, mode) {
   el.className = "np-status" + (mode ? " np-status--" + mode : "");
 }
 
-// All NOWPayments traffic is proxied through the Worker — the browser never
-// sees the API key, and download links come back only after IPN verification.
 async function workerRequest(path, opts = {}) {
   if (!WORKER_URL) throw new Error("WORKER URL NOT CONFIGURED \u2014 SEE TOP OF SCRIPT.JS");
   const res = await fetch(WORKER_URL.replace(/\/+$/, "") + path, Object.assign({}, opts, {
@@ -676,8 +748,6 @@ let npMins = null;
 const isBelowMinSym = (sym, usdTotal) =>
   !!npMins && typeof npMins[sym] === "number" && usdTotal < npMins[sym];
 
-// Loads USD minimum charge per coin from the Worker; drives BOTH the drawer
-// paygrid locks and the popup chip locks.
 async function loadMins() {
   try {
     const syms = Object.keys(ASSETS).join(",");
@@ -707,16 +777,12 @@ function buildCoinChip(sym) {
   b.textContent = sym;
   b.dataset.sym = sym;
   b.addEventListener("click", () => {
-    // Physically blocked coins never trigger checkout: pointer-events: none
-    // stops real clicks, the disabled flag stops assistive tech, and this
-    // guard re-checks the live minimum in case state changed after render.
     if (b.disabled || b.classList.contains("payscreen__tab--off") || isBelowMin(sym)) return;
     startNpPayment(sym);
   });
   return b;
 }
 
-// Greys out chips whose network minimum exceeds the cart total.
 function refreshChipLocks() {
   if (!npMins || !payScreenOrder) return;
   document.querySelectorAll(".payscreen__tab").forEach((b) => {
@@ -735,9 +801,6 @@ function refreshChipLocks() {
   if (active && active.classList.contains("payscreen__tab--off")) showMinAlert(active.dataset.sym);
 }
 
-// ── Drawer paygrid locks: a method group is disabled when the cart total is
-// below the minimum of EVERY coin it offers. Empty carts stay fully
-// selectable — minimums only constrain carts that contain beats. ──
 function isGroupBelowMin(group) {
   const { n, total } = totals();
   if (!npMins || n === 0) return false;
@@ -752,7 +815,7 @@ function firstAffordableGroup(excludeValue) {
 
 function updatePaygridLocks() {
   const { n, total } = totals();
-  const enforce = n > 0 && !!npMins; // no locks on an empty cart
+  const enforce = n > 0 && !!npMins;
   document.querySelectorAll(".paygrid__opt").forEach((b) => {
     const group = PAYMENT_GROUPS.find((g) => g.value === b.dataset.value);
     if (!group) return;
@@ -784,8 +847,6 @@ function appendFallbackChips() {
   refreshChipLocks();
 }
 
-// Asks the Worker for a fresh deposit address in the chosen coin. Switching
-// coins re-uses the same order id so the server keeps one order record.
 async function startNpPayment(sym) {
   const asset = ASSETS[sym];
   if (!asset || !payScreenOrder) return;
@@ -839,8 +900,6 @@ function renderNpPayment() {
   btn.textContent = "COPY ADDRESS";
 }
 
-// Polls the Worker for payment progress. Links arrive ONLY when the Worker
-// has marked the order released (HMAC-verified 'finished' IPN received).
 function startNpPolling(orderId) {
   stopNpPolling();
   npPollTimer = setInterval(async () => {
@@ -848,7 +907,16 @@ function startNpPolling(orderId) {
       const s = await workerRequest("/api/status?order_id=" + encodeURIComponent(orderId));
       if (s.released) {
         stopNpPolling();
-        setNpStatus("PAYMENT VERIFIED \u2014 FILES UNLOCKED", "ok");
+        const statusEl = $("np-status");
+        if (statusEl) {
+          statusEl.classList.add("visible");
+          if (s.links && s.links.some((l) => l.isExclusive)) {
+            statusEl.classList.add("np-status--exclusive");
+          } else {
+            statusEl.classList.add("np-status--ok");
+          }
+        }
+        setNpStatus(NP_STATUS_COPY.finished, "ok");
         revealDownloads(s.links || []);
         return;
       }
@@ -886,8 +954,6 @@ function showPayscreen(order) {
   selectInitialCoin(syms);
 }
 
-// Loads network minimums FIRST so a below-minimum coin never fires a doomed
-// checkout; falls back through the group and surfaces alternatives.
 async function selectInitialCoin(syms) {
   setNpStatus("CHECKING NETWORK MINIMUMS\u2026");
   await loadMins();
@@ -900,16 +966,15 @@ async function selectInitialCoin(syms) {
   startNpPayment(available[0]);
 }
 
-// Downloads stay hidden until the Worker releases them post-IPN verification.
 function prepDownloads() {
   $("payscreen-downloads-wrap").hidden = true;
   $("payscreen-downloads").innerHTML = "";
 }
 
-// Renders ONLY the links handed back by the Worker after verified payment.
 function revealDownloads(links) {
   const list = $("payscreen-downloads");
   list.innerHTML = "";
+  const hasExclusive = links && links.some((l) => l.isExclusive);
   (links || []).forEach((it) => {
     const a = document.createElement("a");
     a.className = "payscreen__dl";
@@ -919,6 +984,14 @@ function revealDownloads(links) {
     a.textContent = `DOWNLOAD ${it.title}`;
     list.appendChild(a);
   });
+  if (hasExclusive) {
+    const a = document.createElement("a");
+    a.className = "payscreen__dl";
+    a.href = "EXCLUSIVE_LICENSE.txt";
+    a.download = "EXCLUSIVE_LICENSE.txt";
+    a.textContent = "DOWNLOAD EXCLUSIVE LICENSE";
+    list.appendChild(a);
+  }
   if (links && links.length) $("payscreen-downloads-wrap").hidden = false;
 }
 
@@ -974,7 +1047,6 @@ function resetDrawer() {
   closeDrawer();
 }
 
-/* ── Season scheduler ──────────────────────────────────────────────── */
 let currentPhase = null;
 let lastUnlockedCount = -1;
 
@@ -991,6 +1063,7 @@ function applyPhase(force = false) {
   currentPhase = p;
   if (leavingS01 || p === "GAP" || p === "POST") {
     selected.clear();
+    exclusiveSelected.clear();
     freePicks.clear();
   }
   rebuildForPhase(p);
@@ -1004,11 +1077,13 @@ function storeTick() {
   }
   tickSeason();
   tickS02();
+  tickBeatCountdowns();
 }
 
 buildTicker();
 buildPaygrid();
 applyPhase(true);
+storeTick();
 render();
 storeTimer = setInterval(storeTick, 1000);
 startBtc();
@@ -1031,7 +1106,17 @@ $("cart-items").addEventListener("click", (e) => {
     return;
   }
   const btn = e.target.closest(".cart-items__remove");
-  if (btn) removeItem(btn.dataset.id);
+  if (btn) {
+    const id = btn.dataset.id;
+    const type = btn.dataset.type;
+    if (type === "exclusive") {
+      exclusiveSelected.delete(id);
+    } else {
+      selected.delete(id);
+      freePicks.delete(id);
+    }
+    render();
+  }
 });
 $("order-form").addEventListener("submit", submitOrder);
 $("payscreen-close").addEventListener("click", () => {
@@ -1044,5 +1129,5 @@ $("copy-address").addEventListener("click", copyPayAddress);
 grid.addEventListener("click", (e) => {
   const btn = e.target.closest(".card__btn");
   if (!btn || btn.disabled) return;
-  toggle(btn.dataset.id);
+  toggle(btn.dataset.id, btn.dataset.type);
 });

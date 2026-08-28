@@ -195,7 +195,162 @@ function deliveryHtml(rec, links) {
   );
 }
 
-async function sendDeliveryEmail(env, rec, links, payment) {
+const LICENSE_TEXT = `# LICENSE AGREEMENT FOR BEAT STORE PRODUCTS
+
+## STANDARD NON-EXCLUSIVE LEASE
+
+This license grants the purchaser a **standard non-exclusive lease** for commercial and streaming use of the beats included in this store. The lease applies to:
+
+- **Commercial Use**: Public performance, licensing, distribution, and any other commercial exploitation of the beats.
+- **Streaming Services**: Inclusion in YouTube, Spotify, Apple Music, Amazon Music, and other streaming platforms.
+
+## MANDATORY CREDIT
+
+All deliverables must include the following mandatory credit:
+
+**"Prod. by Ken Carter"**
+
+This credit must appear prominently on all digital copies, downloads, and promotional materials associated with the purchased beats.
+
+## OWNERSHIP AND MASTER RIGHTS
+
+### Creator Retention
+**Ken Carter** (the creator) retains **all ownership, copyright, and master rights** to the beats, recordings, and related intellectual property. No transfer of ownership or master rights occurs upon purchase. The purchaser receives only a limited, non-exclusive license to use the beats under the terms specified above.
+
+### Licensor Responsibilities
+- The licensor agrees to honor the terms of this license for all purchasers.
+- The licensor shall not assign, transfer, or sublicense the beats beyond the scope of this license.
+- The licensor warrants that the beats are original creations and that the licensor has full authority to grant this license.
+
+## DELIVERY AND DISTRIBUTION
+
+This license is automatically included in:
+
+1. **Download Payload** — Every digital download package shipped with the beats includes the license agreement.
+2. **Delivery Email** — Upon successful payment and verification, a delivery email is sent to the purchaser's registered email address containing the license terms and mandatory credit placement instructions.
+
+## TERMINATION
+
+Either party may terminate this license by providing written notice. Upon termination, the purchaser must cease all commercial and streaming use of the beats and remove the mandatory credit from all distributions.
+
+## GOVERNING LAW
+
+This agreement is governed by the laws of the jurisdiction in which Ken Carter resides, without regard to conflict of law principles.
+
+---
+
+*This license is intended for personal and commercial use only. Unauthorized reproduction, modification, or redistribution of the beats beyond the scope of this license is strictly prohibited.*`;
+
+// Full legal text for the Exclusive Master Rights transfer. This constant is
+// the worker's email-embedded copy and MUST match the physical deliverable at
+// the site root: EXCLUSIVE_LICENSE.txt (keep both identical when editing).
+const EXCLUSIVE_LICENSE_TEXT = `# EXCLUSIVE MASTER RIGHTS LICENSE AGREEMENT
+
+## EXCLUSIVE PURCHASE — FULL TRANSFER OF RIGHTS
+
+This Exclusive Master Rights License Agreement ("Agreement") is entered into between:
+
+**LICENSOR**: Ken Carter ("Producer")
+**LICENSEE**: The purchaser identified by email in the delivery records ("Buyer")
+
+## EXCLUSIVE RIGHTS GRANTED
+
+Upon full payment of the exclusive license fee, Ken Carter hereby irrevocably grants to the Buyer the following exclusive rights:
+
+### 1. Full Master Rights Transfer
+The Producer transfers **ALL ownership, copyright, and master rights** for the purchased beat(s) to the Buyer. The Buyer shall own the exclusive master recording and all associated intellectual property rights.
+
+### 2. Exclusive Ownership
+- The beat shall be **permanently removed from sale** and will never be sold, licensed, or distributed to any other party.
+- Ken Carter retains only a **producer credit** ("Prod. by Ken Carter") in the metadata, which must remain intact.
+
+### 3. Commercial Exploitation Rights
+The Buyer receives unlimited commercial rights including:
+- **Unlimited Distributors**: No cap on streams, sales, or distribution units
+- **Public Performance**: Any and all public performance revenue
+- **Sync Licensing**: YouTube, Netflix, film, TV, advertising, video games
+- **Broadcast Rights**: Radio, podcast, and all broadcast media
+- **Merchandise**: Use in merchandise, physical products, and promotional materials
+- **Derivative Works**: Right to create remixes, edits, and adaptations
+
+### 4. Ownership Transfer Details
+| Right | Transferred to Buyer |
+|-------|---------------------|
+| Master Recording Copyright | YES — Exclusive |
+| Beat/Composition Copyright | NO — Retained by Ken Carter |
+| Mechanical Rights | YES — Exclusive |
+| Sync Rights | YES — Exclusive |
+| Performance Rights | YES — Exclusive |
+| Distribution Rights | YES — Unlimited |
+| Producer Credit | Credit preserved |
+
+### 5. Producer Credit Preservation
+The Buyer agrees to maintain the following credit on all releases:
+**"Prod. by Ken Carter"**
+
+This credit must appear in the production credits/metadata of any release incorporating this beat.
+
+### 6. Prohibited Actions by Producer
+Ken Carter agrees and warrants that:
+- The beat will be **immediately marked as exclusive_sold** upon delivery confirmation
+- The beat will **never be resold, re-licensed, or made available** to any other party
+- No stems, tracks, or component files will be sold to other buyers
+- The beat will be **permanently retired** from the Ken Carter catalog
+
+### 7. Buyer's Obligations
+The Buyer agrees to:
+- Maintain the producer credit ("Prod. by Ken Carter") in all distributions
+- Use the beat in compliance with all applicable laws
+- Provide accurate contact information for delivery purposes
+
+### 8. Delivery Confirmation
+Upon successful payment verification and delivery:
+- The Buyer will receive: **WAV/MP3 files (untagged) + Exclusive_License.txt**
+- The beat will be **permanently removed** from the Ken Carter beat store
+- The Buyer assumes **full ownership** of the master recording
+
+### 9. Termination
+This Agreement is binding and irrevocable once payment is confirmed. No refunds are provided for exclusive purchases after delivery confirmation.
+
+## GOVERNING LAW
+This Agreement is governed by the laws of the jurisdiction in which Ken Carter resides, without regard to conflict of law principles.
+
+---
+
+**CONFIRMED EXCLUSIVE PURCHASE**
+
+By downloading and using this beat, the Buyer acknowledges and agrees to all terms stated herein.
+
+*Ken Carter — Producer — All Rights Reserved*`;
+
+function licenseHtml() {
+  const isExclusive = arguments[0]?.isExclusive || false;
+  const text = isExclusive ? EXCLUSIVE_LICENSE_TEXT : LICENSE_TEXT;
+  const label = isExclusive ? "EXCLUSIVE MASTER RIGHTS LICENSE — FULL TRANSFER" : "OFFICIAL LEASE LICENSE CONTRACT";
+  return (
+    `<div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#888888;margin:18px 0 10px;">${label}</div>` +
+    `<pre style="white-space:pre-wrap;font-size:11px;color:#ffffff;line-height:1.5;margin:0 0 14px;">${text}</pre>`
+  );
+}
+
+function exclusiveLicenseHtml() {
+  return (
+    `<div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#888888;margin:18px 0 10px;">EXCLUSIVE MASTER RIGHTS LICENSE — FULL TRANSFER</div>` +
+    `<pre style="white-space:pre-wrap;font-size:11px;color:#ffffff;line-height:1.5;margin:0 0 14px;">${EXCLUSIVE_LICENSE_TEXT}</pre>`
+  );
+}
+
+async function markBeatExclusiveSold(env, beatId) {
+  const exclusiveKey = "exclusive:" + beatId;
+  await env.ORDERS.put(exclusiveKey, JSON.stringify({ sold: true, soldAt: Date.now() }), { expirationTtl: 60 * 60 * 24 * 365 * 10 });
+}
+
+async function isBeatExclusiveSold(env, beatId) {
+  const raw = await env.ORDERS.get("exclusive:" + beatId);
+  return raw ? JSON.parse(raw).sold === true : false;
+}
+
+async function sendDeliveryEmail(env, rec, links, payment, isExclusive = false) {
   const payload = {
     apiKey: env.STATICFORMS_API_KEY,
     email: rec.email,
@@ -206,7 +361,8 @@ async function sendDeliveryEmail(env, rec, links, payment) {
     NPPaymentId: String(payment.payment_id || ""),
     Total: money(rec.total),
     ArtistName: artistNameFromEmail(rec.email),
-    PaymentDetailsHtml: deliveryHtml(rec, links),
+    PaymentDetailsHtml: deliveryHtml(rec, links) + (isExclusive ? exclusiveLicenseHtml() : licenseHtml(isExclusive)),
+    LicenseText: isExclusive ? EXCLUSIVE_LICENSE_TEXT : LICENSE_TEXT,
     Date: new Date().toUTCString()
   };
   await fetch(STATICFORMS_ENDPOINT, {
@@ -222,7 +378,7 @@ async function saveOrder(env, id, rec) {
 
 async function handleCheckout(request, env) {
   const body = await request.json().catch(() => null);
-  const { order_id, email, coinSym, total, labeled, freeTitles, subtotal, discount, items } = body || {};
+  const { order_id, email, coinSym, total, labeled, freeTitles, subtotal, discount, items, exclusivePicks } = body || {};
 
   if (!email || !EMAIL_RE.test(email)) return json(env, { error: "INVALID EMAIL" }, 400);
   const payCurrency = COIN_CODES[coinSym];
@@ -231,6 +387,12 @@ async function handleCheckout(request, env) {
     return json(env, { error: "EMPTY CART" }, 400);
   }
   if (!(total > 0)) return json(env, { error: "INVALID TOTAL" }, 400);
+
+  // Calculate exclusive vs basic pricing
+  const basicPrice = 14.95;
+  const exclusivePrice = 299.95;
+  const basicItems = items.filter((item, idx) => !exclusivePicks || !exclusivePicks.includes(item.id));
+  const exclusiveItems = items.filter((item, idx) => exclusivePicks && exclusivePicks.includes(item.id));
 
   // Reuse the caller's order id when switching coins mid-checkout.
   const id = order_id && /^KC-[A-Z0-9-]{3,32}$/.test(order_id)
@@ -246,6 +408,13 @@ async function handleCheckout(request, env) {
     ipn_callback_url: env.IPN_CALLBACK_URL || new URL(request.url).origin + "/api/ipn"
   });
 
+  // Store items with exclusive flags
+  const allItems = [...basicItems, ...exclusiveItems].map(({ id: beatId, title }) => ({
+    id: beatId,
+    title,
+    isExclusive: exclusiveItems.some((ei) => ei.id === beatId)
+  }));
+
   await saveOrder(env, id, {
     email,
     coin: payCurrency,
@@ -254,7 +423,7 @@ async function handleCheckout(request, env) {
     freeTitles: freeTitles || [],
     subtotal: subtotal ?? total,
     discount: discount ?? 0,
-    items: items.map(({ id: beatId, title }) => ({ id: beatId, title })),
+    items: allItems,
     payment_id: String(payment.payment_id),
     status: payment.payment_status || "waiting",
     released: false,
@@ -279,10 +448,28 @@ async function handleStatus(url, env) {
   // Links exist on this response ONLY after the IPN handler marked released.
   if (rec.released) {
     const map = beatLinks(env);
+    const links = rec.items.map(({ id: beatId, title }) => ({ title, url: map[beatId] })).filter((l) => l.url);
+
+    // Check which beats are exclusive_sold
+    const exclusiveBeats = await Promise.all(rec.items.map(({ id: beatId }) => isBeatExclusiveSold(env, beatId)));
+
+    const enrichedLinks = links.map((link, idx) => {
+      const beatId = rec.items[idx].id;
+      return {
+        ...link,
+        isExclusive: exclusiveBeats[idx] || false
+      };
+    });
+
+    const license = enrichedLinks.some((l) => l.isExclusive)
+      ? EXCLUSIVE_LICENSE_TEXT
+      : LICENSE_TEXT;
+
     return json(env, {
       status: "finished",
       released: true,
-      links: rec.items.map(({ id: beatId, title }) => ({ title, url: map[beatId] })).filter((l) => l.url)
+      links: enrichedLinks,
+      license
     });
   }
 
@@ -332,11 +519,16 @@ async function handleIpn(request, env, ctx) {
     rec.released = true;
     await saveOrder(env, id, rec);
 
+    // Mark exclusive beats as sold in KV
+    const exclusiveBeats = rec.items.filter((item) => item.isExclusive);
+    const exclusivePromises = exclusiveBeats.map((item) => markBeatExclusiveSold(env, item.id));
+    await Promise.all(exclusivePromises);
+
     const map = beatLinks(env);
-    const links = rec.items.map(({ id: beatId, title }) => ({ title, url: map[beatId] })).filter((l) => l.url);
+    const links = rec.items.map(({ id: beatId, title, isExclusive }) => ({ title, url: map[beatId], isExclusive })).filter((l) => l.url);
     // ctx.waitUntil keeps delivery alive after this response returns
     ctx.waitUntil(
-      sendDeliveryEmail(env, rec, links, payload).catch((e) => console.error("DELIVERY EMAIL FAILED:", e))
+      sendDeliveryEmail(env, rec, links, payload, exclusiveBeats.length > 0).catch((e) => console.error("DELIVERY EMAIL FAILED:", e))
     );
     return json(env, { ok: true, released: true, count: links.length });
   }
