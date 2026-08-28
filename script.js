@@ -771,15 +771,21 @@ function renderSeasonDrawerList() {
         <span class="season-drawer-card__badge season-drawer-card__badge--${state}">${statusText}</span>
       </div>
       <p class="season-drawer-card__desc">
-        ${s.id === "S01" ? "Season 01 \u2014 7 Limited Leases ($14.95 each, pick 2 get 1 free). Active until countdown expires." : "Season 02 \u2014 7 Limited Leases premiering September 1, 2026."}
+        ${s.id === "S01" ? "Season 01 \u2014 7 Limited Leases ($14.95 each, pick 2 get 1 free). Active until countdown expires." : "Season 02 \u2014 7 Exclusive Beats premiering September 1, 2026."}
       </p>
-      ${isUpcoming ? `
-        <form class="season-alert-form" data-season-id="${s.id}">
-          <input type="email" class="season-alert-input" placeholder="YOUR@EMAIL.COM" value="${savedEmail}" ${isSubscribed ? "disabled" : ""} required>
-          <button type="submit" class="season-alert-btn" ${isSubscribed ? "disabled" : ""}>${isSubscribed ? "SUBSCRIBED" : "NOTIFY ME"}</button>
-          <span class="season-alert-msg" ${!isSubscribed ? "hidden" : ""}>SUCCESS \u00b7 NOTIFICATION SET</span>
-        </form>
-      ` : ""}
+      ${isUpcoming ? (
+        isSubscribed ? `
+          <div class="season-alert-subscribed-wrap">
+            <button class="season-alert-subscribed-btn" disabled>SUBSCRIBED</button>
+            <span class="season-alert-email">${savedEmail}</span>
+          </div>
+        ` : `
+          <form class="season-alert-form" data-season-id="${s.id}">
+            <input type="email" class="season-alert-input" placeholder="YOUR@EMAIL.COM" required>
+            <button type="submit" class="season-alert-btn">NOTIFY ME</button>
+          </form>
+        `
+      ) : ""}
       <div class="season-drawer-card__actions">
         <button class="btn btn--solid season-drawer-card__btn" data-season="${s.id}" ${!viewable ? "disabled" : ""}>
           ${active ? "CURRENTLY VIEWING" : viewable ? "VIEW SEASON" : "LOCKED / SOON"}
@@ -1349,8 +1355,6 @@ if (seasonDrawerList) {
     const form = e.target.closest(".season-alert-form");
     if (!form) return;
     const input = form.querySelector(".season-alert-input");
-    const submitBtn = form.querySelector(".season-alert-btn");
-    const msg = form.querySelector(".season-alert-msg");
     const seasonId = form.dataset.seasonId;
     const email = input ? input.value.trim() : "";
 
@@ -1367,14 +1371,7 @@ if (seasonDrawerList) {
       console.error("Local storage error:", err);
     }
 
-    if (input) input.disabled = true;
-    if (submitBtn) {
-      submitBtn.textContent = "SUBSCRIBED";
-      submitBtn.disabled = true;
-    }
-    if (msg) {
-      msg.hidden = false;
-    }
+    renderSeasonDrawerList();
   });
 }
 
@@ -1391,6 +1388,6 @@ if (notifyLink) {
           input.focus();
         }
       }
-    }, 150);
+    }, 250);
   });
 }
