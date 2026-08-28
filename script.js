@@ -746,7 +746,7 @@ function renderSeasonDrawerList() {
   if (!container) return;
   container.innerHTML = "";
 
-  SEASONS.forEach((s) => {
+  SEASONS.slice().reverse().forEach((s) => {
     const state = seasonState(s);
     const viewable = isSeasonViewable(s);
     const active = s.id === selectedSeason;
