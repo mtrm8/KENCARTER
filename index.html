@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>KEN CARTER — BEATS</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=2">
   <link rel="preload" as="image" href="assets/logo.jpg?v=2">
   <link rel="preload" as="image" href="assets/beat1.jpg?v=2">
   <link rel="preload" as="image" href="assets/beat2.jpg?v=2">
@@ -29,13 +29,24 @@
   </div>
 
   <header class="header">
-    <img src="assets/logo.jpg?v=2" alt="KEN CARTER" class="header__logo" fetchpriority="high">
+    <div class="header__inner">
+      <img src="assets/logo.jpg?v=2" alt="KEN CARTER" class="header__logo" fetchpriority="high">
+      <div class="header__nav-row">
+        <button class="brand-season-btn" id="brand-season-btn" aria-label="Select Season">
+          <span id="brand-season-label">SEASON 01</span>
+          <span class="brand-season-btn__icon">&darr;</span>
+        </button>
+        <button class="header-notify-link" id="header-notify-link" type="button">
+          &larr; Get notified for Season 2
+        </button>
+      </div>
+    </div>
   </header>
 
   <section class="drop-banner" aria-label="Season 02 drop countdown">
     <span class="drop-banner__kicker" id="s02-kicker">SEASON 02 &mdash; NEXT DROP IN</span>
     <p class="drop-banner__timer" id="s02-timer">&mdash;</p>
-    <span class="drop-banner__target">SUN AUG 30, 2026 &mdash; 20:00 UTC</span>
+    <span class="drop-banner__target">TUE SEP 1, 2026 &mdash; 00:00 UTC</span>
   </section>
 
     <section class="season" aria-label="Season 01 closing countdown">
@@ -96,6 +107,16 @@
     </div>
   </aside>
 
+  <aside class="drawer" id="season-drawer" aria-hidden="true">
+    <div class="drawer__head">
+      <span>SEASONS &mdash; CATALOG ARCHIVE</span>
+      <button class="drawer__close" id="season-close" aria-label="Close">&times;</button>
+    </div>
+    <div class="drawer__body">
+      <div class="season-drawer-list" id="season-drawer-list"></div>
+    </div>
+  </aside>
+
   <div class="payscreen" id="payscreen" hidden role="dialog" aria-modal="true" aria-label="Payment instructions">
     <div class="payscreen__card">
       <button class="payscreen__close" id="payscreen-close" aria-label="Close">&times;</button>
@@ -130,6 +151,6 @@
     </div>
   </div>
 
-  <script src="script.js"></script>
+  <script src="script.js?v=2"></script>
 </body>
 </html>

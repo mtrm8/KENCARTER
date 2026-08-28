@@ -19,23 +19,67 @@ const BEATS = [
   { id: "beat7", title: "BEAT 07", name: "LAST SEAT",          img: "assets/beat7.jpg?v=2", bpm: 140, key: "G# MIN", tag: "SEASON 01", releaseAt: "2026-08-23T20:00:00Z", leases: LEASES_PER_BEAT }
 ].map((b) => ({ ...b, left: b.left ?? b.leases }));
 
-const SEASON2_BEATS = Array.from({ length: 7 }, (_, i) => ({
-  id: `s2-beat${i + 1}`,
-  title: `BEAT ${String(i + 1).padStart(2, "0")}`,
-  name: "\u2014",
-  img: `assets/beat${i + 1}.jpg?v=2`,
-  bpm: 0,
-  key: "\u2014",
-  leases: LEASES_PER_BEAT
-})).map((b) => ({ ...b, left: b.leases }));
+const SEASON2_BEATS = [
+  { id: "s2-beat1", title: "BEAT 01", name: "ART",                  img: "BEAT COVERS/beat-01.png", bpm: 126, key: "C# MIN", tag: "SEASON 02", releaseAt: "2026-09-01T20:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1zovFkuAsJJ68fIP7hzn8x9PWHecWy8It/view?usp=share_link" },
+  { id: "s2-beat2", title: "BEAT 02", name: "Take the CROW",       img: "BEAT COVERS/beat-02.png", bpm: 130, key: "D# MIN", tag: "SEASON 02", releaseAt: "2026-09-05T20:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1am79D70Miq3_XeVme7Hlc5NlVh5I0v9a/view?usp=share_link" },
+  { id: "s2-beat3", title: "BEAT 03", name: "Late Night",           img: "BEAT COVERS/beat-03.png", bpm: 138, key: "E MIN",  tag: "SEASON 02", releaseAt: "2026-09-09T20:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1RK8s9G-RgIbVYXkKqWoP05h9uxNZM_Xp/view?usp=share_link" },
+  { id: "s2-beat4", title: "BEAT 04", name: "Antinous",             img: "BEAT COVERS/beat-04.png", bpm: 130, key: "F MIN",  tag: "SEASON 02", releaseAt: "2026-09-13T20:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1Lhy1DvxSo3wOiHRbsj_2wVF1EKzPsNbS/view?usp=share_link" },
+  { id: "s2-beat5", title: "BEAT 05", name: "4 AM",                 img: "BEAT COVERS/beat-05.png", bpm: 166, key: "F# MIN", tag: "SEASON 02", releaseAt: "2026-09-17T20:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1xGzuj_3YdWKsrM5XYopRBAhxCCIGle3A/view?usp=share_link" },
+  { id: "s2-beat6", title: "BEAT 06", name: "White",                img: "BEAT COVERS/beat-06.png", bpm: 119, key: "B MIN",  tag: "SEASON 02", releaseAt: "2026-09-21T20:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/14MsnfvOpanbMSjAtbSVB3m3qA8VaR6Ro/view?usp=share_link" },
+  { id: "s2-beat7", title: "BEAT 07", name: "Rewind",               img: "BEAT COVERS/beat-07.png", bpm: 132, key: "G MIN",  tag: "SEASON 02", releaseAt: "2026-09-25T20:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1sbJakmKZIwhd5iDud8X_5BtRLNoVdnQc/view?usp=share_link" }
+].map((b) => ({ ...b, left: b.left ?? b.leases }));
 
 let CATALOG = BEATS;
+let selectedSeason = null;
+
+function catalogFor(season) {
+  if (season === "S01") return BEATS;
+  if (season === "S02") return SEASON2_BEATS;
+  return [];
+}
+
+// A season is only viewable once it is no longer "upcoming" (i.e. it has
+// launched, or it is an ended archive). Upcoming seasons stay hidden/locked.
+function isSeasonViewable(s, now = Date.now()) {
+  return seasonState(s, now) !== "upcoming";
+}
+
+function defaultSeason() {
+  const viewable = SEASONS.filter((s) => isSeasonViewable(s));
+  return viewable.length ? viewable[viewable.length - 1].id : null;
+}
+
+// Season registry for announced seasons (Season 1 and Season 2).
+const SEASONS = [
+  { id: "S01", label: "SEASON 1", closeAt: "2026-08-29T20:00:00Z" },
+  { id: "S02", label: "SEASON 2", launchAt: "2026-09-01T00:00:00Z", closeAt: "2026-10-01T23:59:59Z" }
+];
+
+function seasonLaunchAt(s) {
+  return s.launchAt ? Date.parse(s.launchAt) : null;
+}
+
+function seasonState(s, now = Date.now()) {
+  if (s.closed) return "ended";
+  if (s.closeAt && now >= Date.parse(s.closeAt)) return "ended";
+  const la = seasonLaunchAt(s);
+  if (la == null) return "live";
+  return now >= la ? "live" : "upcoming";
+}
+
+function seasonBadge(s) {
+  const state = seasonState(s);
+  if (state === "live") return "ACTIVE";
+  if (state === "ended") return "ENDED";
+  const d = new Date(seasonLaunchAt(s));
+  return `UPCOMING \u00b7 ${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+}
 
 const TICKER_TEXT = "KEN CARTER \u2014 SEASON 01 IS LIVE \u2014 STRICTLY LIMITED LEASES \u2014 ALL BEATS $14.95 \u2014 PICK 2, GET 1 FREE \u2014 ";
 
 const S01_CLOSE_AT = "2026-08-29T20:00:00Z";
-const S02_OPEN_AT  = "2026-08-30T20:00:00Z";
-const S02_CLOSE_AT = "2026-09-12T20:00:00Z";
+const S02_OPEN_AT  = "2026-09-01T00:00:00Z";
+const S02_CLOSE_AT = "2026-10-01T23:59:59Z";
 const DAY_MS       = 24 * 60 * 60 * 1000;
 let storeTimer     = null;
 
@@ -114,17 +158,22 @@ function tickS02() {
 }
 
 function tickBeatCountdowns() {
+  let changed = false;
   CATALOG.forEach((beat) => {
     if (!beat.releaseAt) return;
     const timerEl = $("countdown-" + beat.id);
     if (!timerEl) return;
     const rem = releaseDate(beat).getTime() - Date.now();
     if (rem <= 0) {
-      applyPhase(true);
+      changed = true;
     } else {
       timerEl.textContent = formatRemaining(rem);
     }
   });
+  if (changed) {
+    buildGrid();
+    render();
+  }
 }
 
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
@@ -360,24 +409,53 @@ function stockHTML(beat) {
     </div>`;
 }
 
-function cardInner(beat, locked = false, index = 0) {
+function cardInner(beat, opts = {}, index = 0) {
+  const { locked = false, archive = false } = opts;
+
+  // ARCHIVE — Season 1 view-only (simplified: name + BPM/key only, no stock/price)
+  if (archive) {
+    return `
+      <div class="card__media">
+        <img src="${beat.img}" alt="${beat.title}" decoding="async" loading="lazy">
+        <span class="card__num">${pad(index + 1)} OF ${pad(CATALOG.length)}</span>
+        <span class="card__tag card__tag--ended">ENDED \u00b7 ARCHIVE</span>
+      </div>
+      <div class="card__info">
+        <div class="card__meta">
+          <div class="card__name">${beat.title}${beat.name ? ` <span class="card__name-alt">\u2014 ${beat.name}</span>` : ""}</div>
+          <div class="card__specs">${specLine(beat)}</div>
+        </div>
+        <button class="card__btn card__btn--ended" disabled>VIEW ONLY</button>
+      </div>`;
+  }
+
+  // LOCKED — Season 2 unreleased (blur cover + countdown + redacted details)
   if (locked) {
-    const unlockDay = new Date(Date.parse(S02_OPEN_AT) + index * DAY_MS);
-    const label = `${MONTHS[unlockDay.getUTCMonth()]} ${unlockDay.getUTCDate()}`;
+    const unlockDay = releaseDate(beat);
+    const label = unlockDay
+      ? `${MONTHS[unlockDay.getUTCMonth()]} ${unlockDay.getUTCDate()}`
+      : "";
     return `
       <div class="card__media">
         <img src="${beat.img}" alt="LOCKED" decoding="async" loading="lazy">
-        <span class="card__num">${pad(index + 1)} OF ${pad(SEASON2_BEATS.length)}</span>
+        <span class="card__num">${pad(index + 1)} OF ${pad(CATALOG.length)}</span>
+        <span class="card__tag card__tag--soon">DROPS SOON</span>
+        <div class="card__countdown">
+          <span class="card__countdown-label">DROPS ${label} \u00b7 20:00 UTC</span>
+          <span class="card__countdown-timer" id="countdown-${beat.id}">${formatRemaining(releaseDate(beat) - Date.now())}</span>
+        </div>
       </div>
       <div class="card__info">
         <div class="card__meta">
           <div class="card__name"><span class="redact-bar" style="width:72%"></span></div>
-          <div class="card__specs"><span class="redact-bar redact-bar--thin" style="width:46%"></span></div>
-          <div class="card__unlock">UNLOCKS ${label} · 20:00 UTC</div>
+          <div class="card__specs"><span class="redact-bar redact-bar--thin" style="width:48%"></span></div>
+          <div class="card__price">$${PRICE.toFixed(2)}</div>
+          <div class="btc-price"></div>
         </div>
-        <button class="card__btn" disabled>LOCKED</button>
+        <button class="card__btn" disabled>SOON</button>
       </div>`;
   }
+
   const released = isReleased(beat);
   const sold = isSoldOut(beat);
   const mediaTag = sold
@@ -433,19 +511,28 @@ function buildGrid() {
   if (!list.length) {
     const panel = document.createElement("article");
     panel.className = "grid-closed";
+    const s = SEASONS.find((x) => x.id === selectedSeason);
+    let title = "STORE CLOSED";
+    let sub = "NEXT DROP TO BE ANNOUNCED.";
+    if (s && !isSeasonViewable(s)) {
+      title = `${s.label} \u2014 COMING SOON`;
+      sub = `UNLOCKS WHEN ITS LAUNCH TIMER EXPIRES.`;
+    } else if (selectedSeason === "S01") {
+      title = "SEASON 01 HAS ENDED";
+      sub = "SEASON 01 IS NOW ARCHIVED \u00b7 VIEW ONLY.";
+    }
     panel.innerHTML =
-      currentPhase === "GAP"
-        ? `<div class="grid-closed__box"><div class="grid-closed__title">SEASON 01 HAS CLOSED</div><p>SEASON 02 OPENS AUG 30 · 20:00 UTC.</p></div>`
-        : `<div class="grid-closed__box"><div class="grid-closed__title">SEASON 02 HAS CLOSED</div><p>NEXT DROP TO BE ANNOUNCED.</p></div>`;
+      `<div class="grid-closed__box"><div class="grid-closed__title">${title}</div><p>${sub}</p></div>`;
     grid.appendChild(panel);
     return;
   }
 
-  const unlockedCount = currentPhase === "S02" ? s02UnlockedCount() : list.length;
-  lastUnlockedCount = unlockedCount;
+  const s01 = SEASONS.find((x) => x.id === "S01");
+  const s01Ended = s01 && seasonState(s01) === "ended";
+  const archive = selectedSeason === "S01" && s01Ended;
 
   list.forEach((beat, i) => {
-    const locked = i >= unlockedCount;
+    const locked = !archive && !isReleased(beat);
     const card = document.createElement("article");
     const isSel = selected.has(beat.id) || exclusiveSelected.has(beat.id);
     card.className =
@@ -453,9 +540,10 @@ function buildGrid() {
       (isReleased(beat) ? "" : " card--locked") +
       (isSoldOut(beat) ? " card--sold" : "") +
       (locked ? " card--censored" : "") +
+      (archive ? " card--archive" : "") +
       (isSel ? " card--selected" : "");
     card.id = "card-" + beat.id;
-    card.innerHTML = cardInner(beat, locked, i);
+    card.innerHTML = cardInner(beat, { locked, archive }, i);
     grid.appendChild(card);
   });
 }
@@ -463,6 +551,11 @@ function buildGrid() {
 function toggle(id, type) {
   const beat = CATALOG.find((b) => b.id === id);
   if (!beat || !isReleased(beat)) return;
+  const s = SEASONS.find((x) => x.id === selectedSeason);
+  if (s && seasonState(s) === "ended") {
+    alert("This season has ended. Catalog is view-only.");
+    return;
+  }
 
   if (isSoldOut(beat)) {
     if (type === "exclusive") {
@@ -617,11 +710,84 @@ function openDrawer() {
   loadMins();
 }
 
+const seasonDrawer = $("season-drawer");
+const seasonClose = $("season-close");
+
+function openSeasonDrawer() {
+  if (!seasonDrawer) return;
+  renderSeasonDrawerList();
+  seasonDrawer.classList.add("drawer--open");
+  seasonDrawer.setAttribute("aria-hidden", "false");
+  backdrop.hidden = false;
+  document.body.style.overflow = "hidden";
+}
+
+function closeSeasonDrawer() {
+  if (!seasonDrawer) return;
+  seasonDrawer.classList.remove("drawer--open");
+  seasonDrawer.setAttribute("aria-hidden", "true");
+  if (drawer.getAttribute("aria-hidden") === "true" && seasonDrawer.getAttribute("aria-hidden") === "true") {
+    backdrop.hidden = true;
+    document.body.style.overflow = "";
+  }
+}
+
 function closeDrawer() {
   drawer.classList.remove("drawer--open");
   drawer.setAttribute("aria-hidden", "true");
-  backdrop.hidden = true;
-  document.body.style.overflow = "";
+  if (drawer.getAttribute("aria-hidden") === "true" && (!seasonDrawer || seasonDrawer.getAttribute("aria-hidden") === "true")) {
+    backdrop.hidden = true;
+    document.body.style.overflow = "";
+  }
+}
+
+function renderSeasonDrawerList() {
+  const container = $("season-drawer-list");
+  if (!container) return;
+  container.innerHTML = "";
+
+  SEASONS.forEach((s) => {
+    const state = seasonState(s);
+    const viewable = isSeasonViewable(s);
+    const active = s.id === selectedSeason;
+
+    const itemEl = document.createElement("div");
+    itemEl.className = "season-drawer-card" + (active ? " season-drawer-card--active" : "");
+
+    let statusText = "LIVE";
+    if (state === "ended") statusText = "ENDED (ARCHIVE)";
+    else if (state === "upcoming") statusText = `UPCOMING \u00b7 ${seasonBadge(s)}`;
+
+    const isUpcoming = state === "upcoming";
+    let savedEmail = "";
+    try {
+      savedEmail = localStorage.getItem("kencarter_alert_" + s.id) || "";
+    } catch (err) {}
+    const isSubscribed = !!savedEmail;
+
+    itemEl.innerHTML = `
+      <div class="season-drawer-card__header">
+        <span class="season-drawer-card__title">${s.label}</span>
+        <span class="season-drawer-card__badge season-drawer-card__badge--${state}">${statusText}</span>
+      </div>
+      <p class="season-drawer-card__desc">
+        ${s.id === "S01" ? "Season 01 \u2014 7 Limited Leases ($14.95 each, pick 2 get 1 free). Active until countdown expires." : "Season 02 \u2014 7 Limited Leases premiering September 1, 2026."}
+      </p>
+      ${isUpcoming ? `
+        <form class="season-alert-form" data-season-id="${s.id}">
+          <input type="email" class="season-alert-input" placeholder="YOUR@EMAIL.COM" value="${savedEmail}" ${isSubscribed ? "disabled" : ""} required>
+          <button type="submit" class="season-alert-btn" ${isSubscribed ? "disabled" : ""}>${isSubscribed ? "SUBSCRIBED" : "NOTIFY ME"}</button>
+          <span class="season-alert-msg" ${!isSubscribed ? "hidden" : ""}>SUCCESS \u00b7 NOTIFICATION SET</span>
+        </form>
+      ` : ""}
+      <div class="season-drawer-card__actions">
+        <button class="btn btn--solid season-drawer-card__btn" data-season="${s.id}" ${!viewable ? "disabled" : ""}>
+          ${active ? "CURRENTLY VIEWING" : viewable ? "VIEW SEASON" : "LOCKED / SOON"}
+        </button>
+      </div>
+    `;
+    container.appendChild(itemEl);
+  });
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -1051,15 +1217,37 @@ function resetDrawer() {
   });
   $("paygrid").classList.remove("invalid");
   closeDrawer();
+  closeSeasonDrawer();
 }
 
 let currentPhase = null;
-let lastUnlockedCount = -1;
 
-function rebuildForPhase(phase) {
-  CATALOG = phase === "S01" ? BEATS : phase === "S02" ? SEASON2_BEATS : [];
-  lastUnlockedCount = -1;
+function rebuildCatalog() {
+  CATALOG = catalogFor(selectedSeason);
   buildGrid();
+  render();
+}
+
+function updateBrandSeasonLabel() {
+  const lbl = $("brand-season-label");
+  if (!lbl) return;
+  const s = SEASONS.find((x) => x.id === selectedSeason);
+  lbl.textContent = s ? s.label : "SEASON 01";
+}
+
+function setSeason(season) {
+  const s = SEASONS.find((x) => x.id === season);
+  if (!s) return;
+  // Upcoming seasons remain locked/hidden until their launch — no access.
+  if (!isSeasonViewable(s)) return;
+  if (season !== selectedSeason) {
+    selected.clear();
+    exclusiveSelected.clear();
+    freePicks.clear();
+  }
+  selectedSeason = season;
+  updateBrandSeasonLabel();
+  rebuildCatalog();
 }
 
 function applyPhase(force = false) {
@@ -1072,15 +1260,11 @@ function applyPhase(force = false) {
     exclusiveSelected.clear();
     freePicks.clear();
   }
-  rebuildForPhase(p);
   render();
 }
 
 function storeTick() {
   applyPhase();
-  if (currentPhase === "S02") {
-    if (s02UnlockedCount() !== lastUnlockedCount) buildGrid();
-  }
   tickSeason();
   tickS02();
   tickBeatCountdowns();
@@ -1088,7 +1272,10 @@ function storeTick() {
 
 buildTicker();
 buildPaygrid();
-applyPhase(true);
+selectedSeason = defaultSeason();
+updateBrandSeasonLabel();
+rebuildCatalog();
+currentPhase = storePhase();
 storeTick();
 render();
 storeTimer = setInterval(storeTick, 1000);
@@ -1137,3 +1324,73 @@ grid.addEventListener("click", (e) => {
   if (!btn || btn.disabled) return;
   toggle(btn.dataset.id, btn.dataset.type);
 });
+
+const brandBtn = $("brand-season-btn");
+if (brandBtn) {
+  brandBtn.addEventListener("click", openSeasonDrawer);
+}
+
+if (seasonClose) {
+  seasonClose.addEventListener("click", closeSeasonDrawer);
+}
+
+const seasonDrawerList = $("season-drawer-list");
+if (seasonDrawerList) {
+  seasonDrawerList.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-season]");
+    if (!btn || btn.disabled) return;
+    const seasonId = btn.dataset.season;
+    setSeason(seasonId);
+    closeSeasonDrawer();
+  });
+
+  seasonDrawerList.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const form = e.target.closest(".season-alert-form");
+    if (!form) return;
+    const input = form.querySelector(".season-alert-input");
+    const submitBtn = form.querySelector(".season-alert-btn");
+    const msg = form.querySelector(".season-alert-msg");
+    const seasonId = form.dataset.seasonId;
+    const email = input ? input.value.trim() : "";
+
+    if (!EMAIL_RE.test(email)) {
+      alert("Please enter a valid email address.");
+      return;
+    }
+
+    try {
+      if (seasonId) {
+        localStorage.setItem("kencarter_alert_" + seasonId, email);
+      }
+    } catch (err) {
+      console.error("Local storage error:", err);
+    }
+
+    if (input) input.disabled = true;
+    if (submitBtn) {
+      submitBtn.textContent = "SUBSCRIBED";
+      submitBtn.disabled = true;
+    }
+    if (msg) {
+      msg.hidden = false;
+    }
+  });
+}
+
+const notifyLink = $("header-notify-link");
+if (notifyLink) {
+  notifyLink.addEventListener("click", () => {
+    openSeasonDrawer();
+    setTimeout(() => {
+      const s2Card = document.querySelector('.season-alert-form[data-season-id="S02"]');
+      if (s2Card) {
+        s2Card.scrollIntoView({ behavior: "smooth", block: "center" });
+        const input = s2Card.querySelector(".season-alert-input");
+        if (input && !input.disabled) {
+          input.focus();
+        }
+      }
+    }, 150);
+  });
+}

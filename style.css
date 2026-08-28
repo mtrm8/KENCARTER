@@ -87,7 +87,69 @@ button {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 56px 20px 48px;
+  padding: 40px 20px 32px;
+  border-bottom: 1px solid var(--hairline);
+  position: relative;
+  background: var(--white);
+}
+
+.header__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.header__nav-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.brand-season-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--white);
+  color: var(--black);
+  border: 1px solid var(--black);
+  padding: 8px 16px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.brand-season-btn:hover {
+  background: var(--black);
+  color: var(--white);
+}
+
+.brand-season-btn__icon {
+  font-size: 10px;
+}
+
+.header-notify-link {
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--black);
+  cursor: pointer;
+  padding: 4px 0;
+  text-transform: uppercase;
+  transition: opacity 0.15s ease;
+}
+
+.header-notify-link:hover {
+  opacity: 0.6;
 }
 
 .header__logo {
@@ -1245,4 +1307,184 @@ button {
 .card--selected {
   border-color: var(--black);
   box-shadow: inset 0 0 0 1px var(--black);
+}
+
+
+
+/* ── Season 1 Archive (view-only) ───────────────────────────────────── */
+.card__tag--ended {
+  background: var(--black);
+  border-color: var(--black);
+  color: var(--white);
+  font-weight: 700;
+}
+
+.card__price {
+  margin-top: 6px;
+}
+
+.card--archive .card__btn--ended {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ── Season 2 locked / soon ─────────────────────────────────────────── */
+.card__tag--soon {
+  background: var(--black);
+  border-color: var(--black);
+  color: var(--white);
+  z-index: 3;
+}
+
+.card--locked .card__price {
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--black);
+}
+
+.card--locked .btc-price {
+  margin-top: 3px;
+}
+
+.card--locked .card__countdown {
+  z-index: 4;
+}
+
+@media (max-width: 600px) {
+  .season-select {
+    padding: 10px 10px;
+  }
+}
+
+/* ── Season Drawer & Cards ── */
+.season-drawer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.season-drawer-card {
+  border: 1px solid var(--black);
+  padding: 16px;
+  background: var(--white);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.season-drawer-card--active {
+  border-width: 2px;
+  background: #fcfcfc;
+}
+
+.season-drawer-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.season-drawer-card__title {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.season-drawer-card__badge {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  padding: 3px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--black);
+}
+
+.season-drawer-card__badge--live {
+  background: var(--black);
+  color: var(--white);
+}
+
+.season-drawer-card__badge--ended {
+  background: #e8e8e8;
+  color: var(--gray);
+  border-color: var(--gray);
+}
+
+.season-drawer-card__badge--upcoming {
+  background: var(--white);
+  color: var(--gray);
+  border-color: var(--gray);
+}
+
+.season-drawer-card__desc {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--gray);
+}
+
+.season-drawer-card__actions {
+  margin-top: 4px;
+}
+
+.season-drawer-card__btn {
+  width: 100%;
+  padding: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  background: var(--black);
+  color: var(--white);
+  border: 1px solid var(--black);
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+.season-drawer-card__btn:disabled {
+  background: #e5e5e5;
+  color: var(--gray);
+  border-color: #e5e5e5;
+  cursor: not-allowed;
+}
+
+.season-alert-form {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.season-alert-input {
+  flex: 1;
+  padding: 8px 10px;
+  font-size: 11px;
+  font-family: inherit;
+  text-transform: uppercase;
+  border: 1px solid var(--black);
+  background: var(--white);
+  color: var(--black);
+  outline: none;
+}
+
+.season-alert-btn {
+  padding: 8px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: inherit;
+  text-transform: uppercase;
+  background: var(--black);
+  color: var(--white);
+  border: 1px solid var(--black);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.season-alert-btn:hover {
+  background: #333;
+}
+
+.season-alert-msg {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--black);
+  padding: 8px 0;
 }
