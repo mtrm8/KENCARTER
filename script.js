@@ -52,7 +52,7 @@ function defaultSeason() {
 // Season registry for announced seasons (Season 1 and Season 2).
 const SEASONS = [
   { id: "S01", label: "SEASON 1", closeAt: "2026-08-29T20:00:00Z" },
-  { id: "S02", label: "SEASON 2", launchAt: "2026-09-01T00:00:00Z", closeAt: "2026-10-01T23:59:59Z" }
+  { id: "S02", label: "SEASON 2", launchAt: "2026-09-01T00:00:00Z", closeAt: "2026-09-30T20:00:00Z" }
 ];
 
 function seasonLaunchAt(s) {
@@ -79,7 +79,8 @@ const TICKER_TEXT = "KEN CARTER \u2014 SEASON 01 IS LIVE \u2014 STRICTLY LIMITED
 
 const S01_CLOSE_AT = "2026-08-29T20:00:00Z";
 const S02_OPEN_AT  = "2026-09-01T00:00:00Z";
-const S02_CLOSE_AT = "2026-10-01T23:59:59Z";
+const S02_FINAL_DROP_AT = "2026-09-25T20:00:00Z";
+const S02_CLOSE_AT = "2026-09-30T20:00:00Z";
 const DAY_MS       = 24 * 60 * 60 * 1000;
 let storeTimer     = null;
 
@@ -105,56 +106,77 @@ function setKicker(text) {
   if (k) k.textContent = text;
 }
 
-function tickSeason() {
+function tickSeason(now = Date.now()) {
   const timerEl = $("season-timer");
   if (!timerEl) return;
   const statusEl = $("season-status");
-  const phase = storePhase();
+  const s1 = SEASONS.find(s => s.id === "S01");
+  const s2 = SEASONS.find(s => s.id === "S02");
 
-  if (phase === "S01") {
+  if (s1 && seasonState(s1, now) === "live") {
     setKicker("SEASON 01 CLOSES IN");
     if (statusEl) statusEl.textContent = "SEASON 01 LOCKS WHEN TIMER EXPIRES OR LEASES SELL OUT.";
-    const remaining = Date.parse(S01_CLOSE_AT) - Date.now();
+    const remaining = Date.parse(S01_CLOSE_AT) - now;
     timerEl.textContent = remaining <= 0 ? "EXPIRED" : formatRemaining(remaining);
     return;
   }
-  if (phase === "GAP") {
+
+  if (now < Date.parse(S02_OPEN_AT)) {
     setKicker("SEASON 01 HAS CLOSED");
-    if (statusEl) statusEl.textContent = "SEASON 02 OPENS AUG 30 \u00b7 20:00 UTC.";
-    timerEl.textContent = "SEE YOU AT THE DROP";
+    if (statusEl) statusEl.textContent = "SEASON 02 OPENS SEP 1, 2026 \u00b7 00:00 UTC.";
+    const remaining = Date.parse(S02_OPEN_AT) - now;
+    timerEl.textContent = remaining <= 0 ? "OPENING\u2026" : formatRemaining(remaining);
     return;
   }
-  if (phase === "S02") {
-    setKicker("SEASON 02 CLOSES IN");
-    if (statusEl) statusEl.textContent = "SEASON 02 LOCKS WHEN TIMER EXPIRES OR LEASES SELL OUT.";
-    const remaining = Date.parse(S02_CLOSE_AT) - Date.now();
-    timerEl.textContent = remaining <= 0 ? "EXPIRED" : formatRemaining(remaining);
+
+  if (s2 && seasonState(s2, now) === "live") {
+    const afterFinalDrop = now >= Date.parse(S02_FINAL_DROP_AT);
+    if (afterFinalDrop) {
+      setKicker("SEASON 02 CLOSES IN");
+      if (statusEl) statusEl.textContent = "SEASON 02 LOCKS WHEN TIMER EXPIRES OR LEASES SELL OUT.";
+      const remaining = Date.parse(S02_CLOSE_AT) - now;
+      timerEl.textContent = remaining <= 0 ? "EXPIRED" : formatRemaining(remaining);
+    } else {
+      setKicker("SEASON 02 IS LIVE");
+      if (statusEl) statusEl.textContent = "SEASON 02 CATALOG IS ACTIVE WITH SCHEDULED DROP DATES.";
+      timerEl.textContent = "LIVE NOW";
+    }
     return;
   }
+
   setKicker("SEASON 02 HAS CLOSED");
-  if (statusEl) statusEl.textContent = "THE STORE REOPENS WITH THE NEXT SEASON.";
-  timerEl.textContent = "NEXT DROP TO BE ANNOUNCED";
+  if (statusEl) statusEl.textContent = "SEASON 02 IS NOW ARCHIVED \u00b7 VIEW ONLY.";
+  timerEl.textContent = "EXPIRED";
 }
 
-function tickS02() {
+function tickS02(now = Date.now()) {
   const el = $("s02-timer");
   if (!el) return;
   const kicker = $("s02-kicker");
-  const phase = storePhase();
 
-  if (phase === "S02") {
-    if (kicker) kicker.textContent = "SEASON 02 IS LIVE";
-    el.textContent = "LIVE NOW";
+  if (now < Date.parse(S02_OPEN_AT)) {
+    if (kicker) kicker.textContent = "SEASON 02 \u2014 NEXT DROP IN";
+    const remaining = Date.parse(S02_OPEN_AT) - now;
+    el.textContent = remaining <= 0 ? "OPENING\u2026" : formatRemaining(remaining);
     return;
   }
-  if (phase === "POST") {
-    if (kicker) kicker.textContent = "SEASON 02 HAS CLOSED";
-    el.textContent = "NEXT DROP TBA";
+
+  if (now < Date.parse(S02_FINAL_DROP_AT)) {
+    if (kicker) kicker.textContent = "SEASON 02 \u2014 FINAL DROP IN";
+    const remaining = Date.parse(S02_FINAL_DROP_AT) - now;
+    el.textContent = remaining <= 0 ? "FINAL DROP READY" : formatRemaining(remaining);
     return;
   }
-  if (kicker) kicker.textContent = "SEASON 02 \u2014 NEXT DROP IN";
-  const remaining = Date.parse(S02_OPEN_AT) - Date.now();
-  el.textContent = remaining <= 0 ? "OPENING\u2026" : formatRemaining(remaining);
+
+  if (now < Date.parse(S02_CLOSE_AT)) {
+    if (kicker) kicker.textContent = "SEASON 02 \u2014 CLOSES IN";
+    const remaining = Date.parse(S02_CLOSE_AT) - now;
+    el.textContent = remaining <= 0 ? "CLOSING" : formatRemaining(remaining);
+    return;
+  }
+
+  if (kicker) kicker.textContent = "SEASON 02 HAS CLOSED";
+  el.textContent = "ARCHIVED";
 }
 
 function tickBeatCountdowns() {
