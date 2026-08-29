@@ -1291,11 +1291,34 @@ function applyPhase(force = false) {
   render();
 }
 
+function checkSeason2ExpiryNotification(now = Date.now()) {
+  const closeTime = Date.parse(S02_CLOSE_AT);
+  if (now >= closeTime) {
+    try {
+      const email = localStorage.getItem("kencarcer_alert_S02");
+      const alreadyNotified = localStorage.getItem("kencarcer_notified_S02");
+      if (email && !alreadyNotified) {
+        localStorage.setItem("kencarcer_notified_S02", "true");
+        if (WORKER_URL) {
+          fetch(WORKER_URL.replace(/\/+$/, "") + "/api/notify-closure", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ season: "S02", email })
+          }).catch(() => {});
+        }
+      }
+    } catch (err) {
+      console.error("Season 2 expiry notification error:", err);
+    }
+  }
+}
+
 function storeTick() {
   applyPhase();
   tickSeason();
   tickS02();
   tickBeatCountdowns();
+  checkSeason2ExpiryNotification();
 }
 
 buildTicker();

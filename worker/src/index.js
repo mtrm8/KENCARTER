@@ -448,6 +448,27 @@ async function handleCheckout(request, env) {
   });
 }
 
+async function handleNotifyClosure(request, env) {
+  const body = await request.json().catch(() => null);
+  const { season, email } = body || {};
+  if (!email || !EMAIL_RE.test(email)) return json(env, { error: "INVALID EMAIL" }, 400);
+
+  const payload = {
+    apiKey: env.STATICFORMS_API_KEY,
+    email,
+    message: `SEASON ${season === "S02" ? "02" : season} HAS CLOSED — CATALOG ARCHIVED`,
+    Season: season,
+    Status: "SEASON CLOSED & ARCHIVED",
+    Date: new Date().toUTCString()
+  };
+  await fetch(STATICFORMS_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(payload)
+  });
+  return json(env, { ok: true });
+}
+
 async function handleStatus(url, env) {
   const id = url.searchParams.get("order_id");
   const raw = id && (await env.ORDERS.get(orderKey(id)));
@@ -549,6 +570,7 @@ export default {
     const url = new URL(request.url);
     try {
       if (request.method === "POST" && url.pathname === "/api/checkout") return await handleCheckout(request, env);
+      if (request.method === "POST" && url.pathname === "/api/notify-closure") return await handleNotifyClosure(request, env);
       if (request.method === "GET" && url.pathname === "/api/status") return await handleStatus(url, env);
       if (request.method === "GET" && url.pathname === "/api/mins") return await handleMins(url, env);
       if (request.method === "POST" && url.pathname === "/api/ipn") return await handleIpn(request, env, ctx);
