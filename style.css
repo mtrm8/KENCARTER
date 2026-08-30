@@ -397,7 +397,29 @@ button {
 .card__name {
   font-size: 13px;
   font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   white-space: nowrap;
+}
+
+.card__youtube-link {
+  display: inline-flex;
+  align-items: center;
+  color: var(--black);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.card__youtube-link:hover {
+  opacity: 0.6;
+  transform: scale(1.08);
+}
+
+.card__youtube-link svg {
+  width: 14px;
+  height: 14px;
 }
 
 .card__meta {

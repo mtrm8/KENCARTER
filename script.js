@@ -10,23 +10,23 @@ const LOW_STOCK_AT = 3;
 const LEASES_PER_BEAT = 10;
 
 const BEATS = [
-  { id: "beat1", title: "BEAT 01", name: "CH\u00a3$$",          img: "assets/beat1.jpg?v=2", bpm: 140, key: "E MIN",  tag: "SEASON 01", leases: LEASES_PER_BEAT },
-  { id: "beat2", title: "BEAT 02", name: "AnGeLL",             img: "assets/beat2.jpg?v=2", bpm: 75,  key: "G# MIN", tag: "SEASON 01", leases: LEASES_PER_BEAT },
-  { id: "beat3", title: "BEAT 03", name: "DIAMONS IN THE BAG", img: "assets/beat3.jpg?v=2", bpm: 130, key: "A# MIN", tag: "SEASON 01", leases: LEASES_PER_BEAT },
-  { id: "beat4", title: "BEAT 04", name: "$$$",                img: "assets/beat4.jpg?v=2", bpm: 140, key: "G MIN",  tag: "SEASON 01", leases: LEASES_PER_BEAT },
-  { id: "beat5", title: "BEAT 05", name: "HIGH VIEW",          img: "assets/beat5.jpg?v=2", bpm: 168, key: "C MIN",  tag: "SEASON 01", leases: LEASES_PER_BEAT },
-  { id: "beat6", title: "BEAT 06", name: "PROTOCOL",           img: "assets/beat6.jpg?v=2", bpm: 135, key: "G# MIN", tag: "SEASON 01", leases: LEASES_PER_BEAT },
-  { id: "beat7", title: "BEAT 07", name: "LAST SEAT",          img: "assets/beat7.jpg?v=2", bpm: 140, key: "G# MIN", tag: "SEASON 01", releaseAt: "2026-08-23T20:00:00Z", leases: LEASES_PER_BEAT }
+  { id: "beat1", title: "BEAT 01", name: "CH\u00a3$$",          img: "assets/beat1.jpg?v=2", bpm: 140, key: "E MIN",  tag: "SEASON 01", leases: LEASES_PER_BEAT, youtube: "https://youtu.be/EtIy63bCyEc" },
+  { id: "beat2", title: "BEAT 02", name: "AnGeLL",             img: "assets/beat2.jpg?v=2", bpm: 75,  key: "G# MIN", tag: "SEASON 01", leases: LEASES_PER_BEAT, youtube: "https://youtu.be/Y4CY1Qb4e4s" },
+  { id: "beat3", title: "BEAT 03", name: "DIAMONS IN THE BAG", img: "assets/beat3.jpg?v=2", bpm: 130, key: "A# MIN", tag: "SEASON 01", leases: LEASES_PER_BEAT, youtube: "https://youtu.be/orkevqUH0bM" },
+  { id: "beat4", title: "BEAT 04", name: "$$$",                img: "assets/beat4.jpg?v=2", bpm: 140, key: "G MIN",  tag: "SEASON 01", leases: LEASES_PER_BEAT, youtube: "https://youtu.be/bRudvWoy7RY" },
+  { id: "beat5", title: "BEAT 05", name: "HIGH VIEW",          img: "assets/beat5.jpg?v=2", bpm: 168, key: "C MIN",  tag: "SEASON 01", leases: LEASES_PER_BEAT, youtube: "https://youtu.be/12qPZNM2fe0" },
+  { id: "beat6", title: "BEAT 06", name: "PROTOCOL",           img: "assets/beat6.jpg?v=2", bpm: 135, key: "G# MIN", tag: "SEASON 01", leases: LEASES_PER_BEAT, youtube: "https://youtu.be/xk_SSDX4vZE" },
+  { id: "beat7", title: "BEAT 07", name: "LAST SEAT",          img: "assets/beat7.jpg?v=2", bpm: 140, key: "G# MIN", tag: "SEASON 01", releaseAt: "2026-08-23T20:00:00Z", leases: LEASES_PER_BEAT, youtube: "https://youtu.be/p7vyAIsWKQw" }
 ].map((b) => ({ ...b, left: b.left ?? b.leases }));
 
 const SEASON2_BEATS = [
-  { id: "s2-beat1", title: "BEAT 01", name: "ART",                  img: "BEAT COVERS/beat-01.png", bpm: 126, key: "C# MIN", tag: "SEASON 02", releaseAt: "2026-09-01T20:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1zovFkuAsJJ68fIP7hzn8x9PWHecWy8It/view?usp=share_link" },
-  { id: "s2-beat2", title: "BEAT 02", name: "Take the CROW",       img: "BEAT COVERS/beat-02.png", bpm: 130, key: "D# MIN", tag: "SEASON 02", releaseAt: "2026-09-05T20:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1am79D70Miq3_XeVme7Hlc5NlVh5I0v9a/view?usp=share_link" },
-  { id: "s2-beat3", title: "BEAT 03", name: "Late Night",           img: "BEAT COVERS/beat-03.png", bpm: 138, key: "E MIN",  tag: "SEASON 02", releaseAt: "2026-09-09T20:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1RK8s9G-RgIbVYXkKqWoP05h9uxNZM_Xp/view?usp=share_link" },
-  { id: "s2-beat4", title: "BEAT 04", name: "Antinous",             img: "BEAT COVERS/beat-04.png", bpm: 130, key: "F MIN",  tag: "SEASON 02", releaseAt: "2026-09-13T20:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1Lhy1DvxSo3wOiHRbsj_2wVF1EKzPsNbS/view?usp=share_link" },
-  { id: "s2-beat5", title: "BEAT 05", name: "4 AM",                 img: "BEAT COVERS/beat-05.png", bpm: 166, key: "F# MIN", tag: "SEASON 02", releaseAt: "2026-09-17T20:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1xGzuj_3YdWKsrM5XYopRBAhxCCIGle3A/view?usp=share_link" },
-  { id: "s2-beat6", title: "BEAT 06", name: "White",                img: "BEAT COVERS/beat-06.png", bpm: 119, key: "B MIN",  tag: "SEASON 02", releaseAt: "2026-09-21T20:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/14MsnfvOpanbMSjAtbSVB3m3qA8VaR6Ro/view?usp=share_link" },
-  { id: "s2-beat7", title: "BEAT 07", name: "Rewind",               img: "BEAT COVERS/beat-07.png", bpm: 132, key: "G MIN",  tag: "SEASON 02", releaseAt: "2026-09-25T20:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1sbJakmKZIwhd5iDud8X_5BtRLNoVdnQc/view?usp=share_link" }
+  { id: "s2-beat1", title: "BEAT 01", name: "ART",                  img: "BEAT COVERS/beat-01.png", bpm: 126, key: "C# MIN", tag: "SEASON 02", releaseAt: "2026-09-01T20:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1zovFkuAsJJ68fIP7hzn8x9PWHecWy8It/view?usp=share_link", youtube: "https://youtu.be/LeARirM_bl0" },
+  { id: "s2-beat2", title: "BEAT 02", name: "Take the CROW",       img: "BEAT COVERS/beat-02.png", bpm: 130, key: "D# MIN", tag: "SEASON 02", releaseAt: "2026-09-05T20:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1am79D70Miq3_XeVme7Hlc5NlVh5I0v9a/view?usp=share_link", youtube: "https://youtu.be/ZptaYX0g8uU" },
+  { id: "s2-beat3", title: "BEAT 03", name: "Late Night",           img: "BEAT COVERS/beat-03.png", bpm: 138, key: "E MIN",  tag: "SEASON 02", releaseAt: "2026-09-09T20:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1RK8s9G-RgIbVYXkKqWoP05h9uxNZM_Xp/view?usp=share_link", youtube: "https://youtu.be/EpV_G80aKQU" },
+  { id: "s2-beat4", title: "BEAT 04", name: "Antinous",             img: "BEAT COVERS/beat-04.png", bpm: 130, key: "F MIN",  tag: "SEASON 02", releaseAt: "2026-09-13T20:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1Lhy1DvxSo3wOiHRbsj_2wVF1EKzPsNbS/view?usp=share_link", youtube: "https://youtu.be/PD4qibTpR_s" },
+  { id: "s2-beat5", title: "BEAT 05", name: "4 AM",                 img: "BEAT COVERS/beat-05.png", bpm: 166, key: "F# MIN", tag: "SEASON 02", releaseAt: "2026-09-17T20:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1xGzuj_3YdWKsrM5XYopRBAhxCCIGle3A/view?usp=share_link", youtube: "https://youtu.be/alA-itPRkt4" },
+  { id: "s2-beat6", title: "BEAT 06", name: "White",                img: "BEAT COVERS/beat-06.png", bpm: 119, key: "B MIN",  tag: "SEASON 02", releaseAt: "2026-09-21T20:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/14MsnfvOpanbMSjAtbSVB3m3qA8VaR6Ro/view?usp=share_link", youtube: "https://youtu.be/nl2M-EaCrrk" },
+  { id: "s2-beat7", title: "BEAT 07", name: "Rewind",               img: "BEAT COVERS/beat-07.png", bpm: 132, key: "G MIN",  tag: "SEASON 02", releaseAt: "2026-09-25T20:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1sbJakmKZIwhd5iDud8X_5BtRLNoVdnQc/view?usp=share_link", youtube: "https://youtu.be/WZLsWpzFJAs" }
 ].map((b) => ({ ...b, left: b.left ?? b.leases }));
 
 let CATALOG = BEATS;
@@ -431,6 +431,11 @@ function stockHTML(beat) {
     </div>`;
 }
 
+function youtubeHTML(beat, show) {
+  if (!show || !beat.youtube) return "";
+  return `<a href="${beat.youtube}" target="_blank" rel="noopener noreferrer" class="card__youtube-link" aria-label="Watch on YouTube" title="Watch on YouTube" onclick="event.stopPropagation()"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg></a>`;
+}
+
 function cardInner(beat, opts = {}, index = 0) {
   const { locked = false, archive = false } = opts;
 
@@ -444,7 +449,10 @@ function cardInner(beat, opts = {}, index = 0) {
       </div>
       <div class="card__info">
         <div class="card__meta">
-          <div class="card__name">${beat.title}${beat.name ? ` <span class="card__name-alt">\u2014 ${beat.name}</span>` : ""}</div>
+          <div class="card__name">
+            <span>${beat.title}${beat.name ? ` <span class="card__name-alt">\u2014 ${beat.name}</span>` : ""}</span>
+            ${youtubeHTML(beat, true)}
+          </div>
           <div class="card__specs">${specLine(beat)}</div>
         </div>
         <button class="card__btn card__btn--ended" disabled>VIEW ONLY</button>
@@ -517,7 +525,10 @@ function cardInner(beat, opts = {}, index = 0) {
     </div>
     <div class="card__info">
       <div class="card__meta">
-        <div class="card__name">${beat.title} <span class="card__name-alt">\u2014 ${beat.name}</span></div>
+        <div class="card__name">
+          <span>${beat.title} <span class="card__name-alt">\u2014 ${beat.name}</span></span>
+          ${youtubeHTML(beat, released)}
+        </div>
         <div class="card__specs">${specLine(beat)}</div>
         <div class="btc-price"></div>
         ${stockHTML(beat)}
