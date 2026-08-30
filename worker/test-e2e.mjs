@@ -184,7 +184,7 @@ fCheck(/flex-direction:\s*column/.test(script) || /\.card__actions\s*\{[^}]*flex
 // B. Worker HMAC signature verification
 // ───────────────────────────────────────────────────────────────────────────
 INFO("B. NOWPAYMENTS HMAC-SHA512 SIGNATURE VERIFICATION");
-const ipnPayload = { payment_status: "finished", payment_id: 123, order_id: "KC-TEST-ABC", pay_amount: "299.95", pay_currency: "usdttrc20" };
+const ipnPayload = { payment_status: "finished", payment_id: 123, order_id: "KC-TEST-ABC", pay_amount: "299.95", pay_currency: "usdtsol" };
 check(await verifyIpnSignature(SECRET, JSON.stringify(ipnPayload), npSign(ipnPayload, "|")), "accepts pipe-joined signature (NOWPayments official)");
 check(await verifyIpnSignature(SECRET, JSON.stringify(ipnPayload), npSign(ipnPayload, "")), "accepts empty-joined signature variant");
 check(!(await verifyIpnSignature("wrong-secret", JSON.stringify(ipnPayload), npSign(ipnPayload, "|"))), "rejects wrong IPN secret");
@@ -390,7 +390,7 @@ check(readFileSync(root + "EXCLUSIVE_LICENSE.txt", "utf8").includes("Full Master
 // Summary
 // ───────────────────────────────────────────────────────────────────────────
 INFO("FINAL STATUS REPORT");
-console.log("  Payment provider .... NOWPayments (Tron/TRC-20 settlement) — NOT Helio (no Helio code in repo)");
+console.log("  Payment provider .... NOWPayments (Solana settlement) — NOT Helio (no Helio code in repo)");
 console.log("  Delivery channel .... StaticForms auto-reply email, embedded license");
 console.log("  KV bindings ......... order:{id}, exclusive:{beat} (never marks leases)");
 console.log("  Release trigger ..... IPN payment_status === 'finished' (HMAC-SHA512 verified)");

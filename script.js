@@ -263,7 +263,7 @@ const BTC_ENDPOINT =
 
 const ASSETS = {
   USDT: {
-    sym: "USDT", name: "TETHER", id: "tether", np: "usdttrc20",
+    sym: "USDT", name: "TETHER", id: "tether", np: "usdtsol",
     icon: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="currentColor" fill-rule="evenodd" d="M6.7 6.9h10.6v2.8h-4.2v1.4c2.75.2 4.8.95 4.8 1.85 0 1.05-2.7 1.9-6 1.9s-6-.85-6-1.9c0-.9 2.05-1.65 4.8-1.85V9.7H6.7Zm5.3 6.15c2.95 0 5.35-.6 5.35-1.15 0-.5-1.75-.95-3.65-1.07v1.1c0 .26-.76.47-1.7.47s-1.7-.21-1.7-.47v-1.1c-1.9.12-3.65.57-3.65 1.07 0 .55 2.4 1.15 5.35 1.15Z"/></svg>`
   },
   USDC: {
@@ -1090,7 +1090,7 @@ async function startNpPayment(sym) {
 function renderNpPayment() {
   if (!npPayment) return;
   $("payscreen-equiv").textContent = `${npPayment.pay_amount} ${String(npPayment.pay_currency).toUpperCase()}`;
-  $("payscreen-network").textContent = "SEND VIA TRON (TRC-20) NETWORK";
+  $("payscreen-network").textContent = "SEND VIA SOLANA NETWORK";
   $("payscreen-address").textContent = npPayment.pay_address;
   $("payscreen-payblock").hidden = false;
   const btn = $("copy-address");

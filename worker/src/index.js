@@ -4,8 +4,8 @@
  * All NOWPayments traffic + download-link custody lives HERE, never in the
  * site's public JavaScript.
  *
- * Settlement: TRON network (TRX & TRC-20 tokens, e.g. USDT)
- *   Merchant wallet: TDPB13TMNjRMf3VoCy561CPVhbMqizkEdJ
+ * Settlement: Solana network (SOL & SPL tokens, e.g. USDC / USDT on Solana)
+ *   Merchant wallet: 2P2m2u46hg7a7eK6YSjtogSv4QnExEdfsjAKkGz719aX
  *   Payments route through NOWPayments to ensure proper conversion
  *   and on-chain verification before files are released.
  *
@@ -28,7 +28,7 @@ const NP_API = "https://api.nowpayments.io/v1";
 const STATICFORMS_ENDPOINT = "https://api.staticforms.dev/submit";
 
 const COIN_CODES = {
-  USDT: "usdttrc20",
+  USDT: "usdtsol",
   USDC: "usdc",
   BTC: "btc",
   ETH: "eth",
