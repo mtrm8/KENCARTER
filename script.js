@@ -1494,6 +1494,7 @@ async function disconnectWalletSession() {
   isKenHolder = false;
   try {
     localStorage.clear();
+    localStorage.setItem("ken_user_logged_out", "true");
     localStorage.setItem("ken_disconnected", "true");
     localStorage.setItem("kencarter_user_disconnected", "true");
     if (window.solana && typeof window.solana.disconnect === "function") {
@@ -1520,7 +1521,11 @@ async function disconnectWalletSession() {
 
 function openWalletModal() {
   if (!walletModal) return;
-  if (localStorage.getItem("ken_disconnected") === "true" || localStorage.getItem("kencarter_user_disconnected") === "true") {
+  if (
+    localStorage.getItem("ken_user_logged_out") === "true" ||
+    localStorage.getItem("ken_disconnected") === "true" ||
+    localStorage.getItem("kencarter_user_disconnected") === "true"
+  ) {
     window._forceDisconnected = true;
   }
   if (window._forceDisconnected) {
@@ -1570,8 +1575,10 @@ async function connectSolanaWallet(e, walletType = "phantom") {
     e.stopPropagation();
   }
 
+  localStorage.removeItem("ken_user_logged_out");
   localStorage.removeItem("ken_disconnected");
   localStorage.removeItem("kencarter_user_disconnected");
+  window._forceDisconnected = false;
 
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const currentUrl = window.location.href;
