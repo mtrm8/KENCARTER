@@ -1674,7 +1674,8 @@ button {
   font-weight: 700;
   letter-spacing: 0.35em;
   color: var(--gray);
-  margin-bottom: 8px;
+  margin: 0 auto 8px auto;
+  text-align: center;
 }
 
 .ken-benefits__grid {
