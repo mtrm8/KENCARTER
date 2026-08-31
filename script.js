@@ -1494,6 +1494,7 @@ function openWalletModal() {
   if (walletModalDesc) walletModalDesc.textContent = "Connect your wallet to verify KEN holdings and unlock your 15% discount & automated cashback.";
   if (walletModalSub) walletModalSub.hidden = false;
   if (walletSelectList) {
+    walletSelectList.hidden = false;
     walletSelectList.innerHTML = `
       <button class="wallet-option-btn" id="connect-phantom-btn" type="button">
         <span class="wallet-option-icon"><img src="assets/images/phantom.svg?v=3" alt="Phantom" width="18" height="18" style="display:block; width:18px; height:18px;" /></span>
@@ -1503,9 +1504,6 @@ function openWalletModal() {
         <span class="wallet-option-icon"><img src="assets/images/solflare.svg?v=3" alt="Solflare" width="18" height="18" style="display:block; width:18px; height:18px;" /></span>
         <span class="wallet-option-text">CONNECT SOLFLARE</span>
       </button>
-      <div style="margin-top: 16px; text-align: center; font-size: 10px; color: #888888; letter-spacing: 0.06em;">
-        Don't have a wallet? Download <a href="https://phantom.app/download" target="_blank" rel="noopener noreferrer" style="color: #fff; text-decoration: underline;">Phantom</a> or <a href="https://solflare.com/download" target="_blank" rel="noopener noreferrer" style="color: #fff; text-decoration: underline;">Solflare</a>
-      </div>
     `;
 
     const phantomBtn = $("connect-phantom-btn");
@@ -1541,32 +1539,21 @@ async function connectSolanaWallet(e, walletType = "phantom") {
   let provider = null;
   if (walletType === "solflare") {
     provider = window.solflare || window.solana;
+    if (!provider && isMobile) {
+      window.location.href = `https://solflare.com/ul/v1/browse/${encodedUrl}`;
+      return;
+    }
   } else {
     provider = window.phantom?.solana || window.solana;
+    if (!provider && isMobile) {
+      window.location.href = `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedUrl}`;
+      return;
+    }
   }
-
-  if (!provider && isMobile) {
-    const deepLink = walletType === "solflare"
-      ? `https://solflare.com/ul/v1/browse/${encodedUrl}`
-      : `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedUrl}`;
-    window.location.href = deepLink;
-    return;
-  }
-
-  const allOptionBtns = document.querySelectorAll('.wallet-option-btn');
 
   if (!provider) {
-    const installUrl = walletType === "solflare" ? "https://solflare.com" : "https://phantom.app";
-    if (walletInlineState) {
-      walletInlineState.innerHTML = `
-        <div style="border: 1px solid #333; padding: 20px; background: #0d0d0d; color: #fff; text-align: center;">
-          <p style="margin-bottom: 12px; font-weight: 700; font-size: 11px; letter-spacing: 0.1em; color: #fff;">WALLET EXTENSION NOT DETECTED</p>
-          <p style="margin-bottom: 14px; color: #888888; font-size: 10px;">Please install the ${walletType === 'solflare' ? 'Solflare' : 'Phantom'} extension to continue.</p>
-          <a href="${installUrl}" target="_blank" rel="noopener noreferrer" class="payscreen__dl" style="display: block; text-decoration: none; background: #fff; color: #000; border-color: #fff; padding: 14px; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;">INSTALL ${walletType === 'solflare' ? 'SOLFLARE' : 'PHANTOM'} &rarr;</a>
-        </div>
-      `;
-      walletInlineState.hidden = false;
-    }
+    const installUrl = walletType === "solflare" ? "https://solflare.com/download" : "https://phantom.app/download";
+    window.open(installUrl, "_blank");
     return;
   }
 
