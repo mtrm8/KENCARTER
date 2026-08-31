@@ -1556,9 +1556,9 @@ async function connectSolanaWallet(e) {
   if (!provider) {
     if (walletInlineState) {
       walletInlineState.innerHTML = `
-        <div style="border: 1px solid #333; padding: 16px; background: #0d0d0d; color: #fff; text-align: center; font-size: 11px; line-height: 1.6;">
-          <p style="margin-bottom: 8px; font-weight: 700; color: #fff; letter-spacing: 0.08em;">SOLANA PROVIDER NOT FOUND</p>
-          <p style="color: #888888; font-size: 10px;">Please ensure a Solana wallet extension is active in your browser.</p>
+        <div style="border: 1px solid #333; padding: 20px; background: #0d0d0d; color: #fff; text-align: center;">
+          <p style="margin-bottom: 12px; font-weight: 700; font-size: 11px; letter-spacing: 0.1em; color: #fff;">OPEN IN PHANTOM APP</p>
+          <a href="https://phantom.app/ul/browse/https://kencarter.abrdns.com?ref=https://kencarter.abrdns.com" target="_blank" rel="noopener noreferrer" class="payscreen__dl" style="display: block; text-decoration: none; background: #fff; color: #000; border-color: #fff; padding: 14px; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;">OPEN IN PHANTOM APP &rarr;</a>
         </div>
       `;
       walletInlineState.hidden = false;
