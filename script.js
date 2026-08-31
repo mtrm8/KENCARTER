@@ -1669,9 +1669,9 @@ async function connectSolanaWallet(e, walletType = "phantom") {
             <p style="margin-bottom: 14px; color: #888888; font-size: 10px; line-height: 1.5;">Hold KEN to activate your 15% lease discount, automated cashback, and Season 2 early access.</p>
             <a href="https://pump.fun/coin/HEFkC6WQo3jTv39B6JhYQJ3ZW8xKxRELaWdnirdSpump" target="_blank" rel="noopener noreferrer" class="payscreen__dl" style="display: block; text-decoration: none; background: #fff; color: #000; border-color: #fff; padding: 12px; font-weight: 800; font-size: 11px; text-transform: uppercase; margin-bottom: 10px;">BUY KEN ON PUMP.FUN &rarr;</a>
             <button type="button" id="check-balance-btn" class="payscreen__dl" style="width: 100%; background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 12px; font-weight: 800; font-size: 11px; text-transform: uppercase; cursor: pointer; margin-bottom: 10px;">CHECK BALANCE / I'VE BOUGHT KEN</button>
-            <button type="button" id="switch-wallet-btn" style="display: block; width: 100%; background: transparent; color: #888888; border: none; font-family: inherit; font-size: 11px; font-weight: 700; cursor: pointer; text-decoration: underline; padding: 6px;">איך להתנתק או להחליף ארנק?</button>
-            <div id="disconnect-guide" hidden style="margin-top: 10px; padding: 14px; background: #141414; border: 1px solid #333; font-size: 11px; color: #ccc; line-height: 1.7; text-align: center; direction: rtl;">
-              כדי להתנתק או להחליף ארנק: לחץ על סמל התוסף של Phantom או Solflare בסרגל הדפדפן, היכנס להגדרות (Settings) &gt; אפליקציות מחוברות (Connected Apps), ונתק את האתר.
+            <button type="button" id="switch-wallet-btn" style="display: block; width: 100%; background: transparent; color: #888888; border: none; font-family: inherit; font-size: 11px; font-weight: 700; cursor: pointer; text-decoration: underline; padding: 6px;">HOW TO SWITCH WALLET / DISCONNECT?</button>
+            <div id="disconnect-guide" hidden style="margin-top: 10px; padding: 14px; background: #141414; border: 1px solid #333; font-size: 11px; color: #ccc; line-height: 1.7; text-align: left; direction: ltr;">
+              To switch or disconnect your wallet: click on your Phantom or Solflare extension icon in your browser toolbar, go to Settings &gt; Connected Apps, and disconnect this site.
             </div>
           </div>
         `;
@@ -1748,9 +1748,9 @@ async function recheckKenBalance(pubKey) {
             <p style="margin-bottom: 14px; color: #888888; font-size: 10px; line-height: 1.5;">Ensure your purchase has settled on-chain, then click again.</p>
             <a href="https://pump.fun/coin/HEFkC6WQo3jTv39B6JhYQJ3ZW8xKxRELaWdnirdSpump" target="_blank" rel="noopener noreferrer" class="payscreen__dl" style="display: block; text-decoration: none; background: #fff; color: #000; border-color: #fff; padding: 12px; font-weight: 800; font-size: 11px; text-transform: uppercase; margin-bottom: 10px;">BUY KEN ON PUMP.FUN &rarr;</a>
             <button type="button" id="check-balance-btn" class="payscreen__dl" style="width: 100%; background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 12px; font-weight: 800; font-size: 11px; text-transform: uppercase; cursor: pointer; margin-bottom: 10px;">CHECK BALANCE / I'VE BOUGHT KEN</button>
-            <button type="button" id="switch-wallet-btn" style="display: block; width: 100%; background: transparent; color: #888888; border: none; font-family: inherit; font-size: 11px; font-weight: 700; cursor: pointer; text-decoration: underline; padding: 6px;">איך להתנתק או להחליף ארנק?</button>
-            <div id="disconnect-guide" hidden style="margin-top: 10px; padding: 14px; background: #141414; border: 1px solid #333; font-size: 11px; color: #ccc; line-height: 1.7; text-align: center; direction: rtl;">
-              כדי להתנתק או להחליף ארנק: לחץ על סמל התוסף של Phantom או Solflare בסרגל הדפדפן, היכנס להגדרות (Settings) &gt; אפליקציות מחוברות (Connected Apps), ונתק את האתר.
+            <button type="button" id="switch-wallet-btn" style="display: block; width: 100%; background: transparent; color: #888888; border: none; font-family: inherit; font-size: 11px; font-weight: 700; cursor: pointer; text-decoration: underline; padding: 6px;">HOW TO SWITCH WALLET / DISCONNECT?</button>
+            <div id="disconnect-guide" hidden style="margin-top: 10px; padding: 14px; background: #141414; border: 1px solid #333; font-size: 11px; color: #ccc; line-height: 1.7; text-align: left; direction: ltr;">
+              To switch or disconnect your wallet: click on your Phantom or Solflare extension icon in your browser toolbar, go to Settings &gt; Connected Apps, and disconnect this site.
             </div>
           </div>
         `;
