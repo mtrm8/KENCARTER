@@ -1492,11 +1492,15 @@ async function disconnectWalletSession() {
   connectedWalletAddress = null;
   isKenHolder = false;
   try {
-    localStorage.removeItem("kencarter_wallet");
-    localStorage.removeItem("kencarter_ken_holder");
-    const activeProvider = window.solana || window.solflare || window.phantom?.solana;
-    if (activeProvider && typeof activeProvider.disconnect === "function") {
-      await activeProvider.disconnect();
+    localStorage.clear();
+    if (window.solana && typeof window.solana.disconnect === "function") {
+      await window.solana.disconnect();
+    }
+    if (window.solflare && typeof window.solflare.disconnect === "function") {
+      await window.solflare.disconnect();
+    }
+    if (window.phantom?.solana && typeof window.phantom.solana.disconnect === "function") {
+      await window.phantom.solana.disconnect();
     }
   } catch (err) {
     console.error("Disconnect cleanup error:", err);
@@ -1592,7 +1596,7 @@ async function connectSolanaWallet(e, walletType = "phantom") {
   const btnText = $("wallet-btn-text");
 
   try {
-    const res = await provider.connect();
+    const res = await provider.connect({ onlyIfTrusted: false });
     const pubKey = (res && res.publicKey) ? res.publicKey.toString() : (provider.publicKey ? provider.publicKey.toString() : null);
     if (!pubKey) {
       throw new Error("Failed to extract public key from connected wallet.");
