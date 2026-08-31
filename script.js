@@ -1488,9 +1488,20 @@ const walletModalSub = $("wallet-modal-sub");
 const walletSelectList = $("wallet-select-list");
 const walletInlineState = $("wallet-inline-state");
 
-function disconnectWalletSession() {
+async function disconnectWalletSession() {
   connectedWalletAddress = null;
   isKenHolder = false;
+  try {
+    localStorage.removeItem("kencarter_wallet");
+    localStorage.removeItem("kencarter_ken_holder");
+    const activeProvider = window.solana || window.solflare || window.phantom?.solana;
+    if (activeProvider && typeof activeProvider.disconnect === "function") {
+      await activeProvider.disconnect();
+    }
+  } catch (err) {
+    console.error("Disconnect cleanup error:", err);
+  }
+
   const btnText = $("wallet-btn-text");
   if (btnText) btnText.textContent = "CONNECT WALLET (KEN)";
   const walletBtnEl = $("wallet-btn");
