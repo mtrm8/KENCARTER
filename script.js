@@ -1515,14 +1515,18 @@ async function connectSolanaWallet(e) {
     e.stopPropagation();
   }
 
-  const provider = window.solana || window.phantom?.solana || window.solflare || window.backpack || window.coinbaseSolana || window.glow;
+  const provider = window.solana || window.solflare || window.phantom?.solana || window.backpack || window.coinbaseSolana || window.glow;
   const actionBtn = $("connect-wallet-action");
 
   if (!provider) {
+    const currentUrl = window.location.href;
+    const phantomDeepLink = `https://phantom.app/ul/browse/${encodeURIComponent(currentUrl)}?ref=${encodeURIComponent(currentUrl)}`;
     if (walletInlineState) {
       walletInlineState.innerHTML = `
-        <div style="border: 1px solid #333; padding: 14px; background: #0d0d0d; color: #fff; text-align: center; font-size: 11px; line-height: 1.6;">
-          Please open this page inside a browser with a Solana wallet extension (Phantom, Solflare, etc.) enabled.
+        <div style="border: 1px solid #333; padding: 16px; background: #0d0d0d; color: #fff; text-align: center; font-size: 11px; line-height: 1.6;">
+          <p style="margin-bottom: 10px; font-weight: 700; color: #fff; letter-spacing: 0.08em;">NO SOLANA WALLET EXTENSION DETECTED</p>
+          <p style="margin-bottom: 14px; color: #888888; font-size: 10px;">Please open this site inside the Phantom app browser or install a Solana wallet extension.</p>
+          <a href="${phantomDeepLink}" target="_blank" rel="noopener noreferrer" class="payscreen__dl" style="display: block; text-decoration: none; background: #fff; color: #000; border-color: #fff; padding: 12px; font-weight: 800; font-size: 11px; text-transform: uppercase;">OPEN IN PHANTOM APP &rarr;</a>
         </div>
       `;
       walletInlineState.hidden = false;
@@ -1544,11 +1548,14 @@ async function connectSolanaWallet(e) {
 
   try {
     const res = await provider.connect();
-    const pubKey = res.publicKey ? res.publicKey.toString() : provider.publicKey.toString();
+    const pubKey = (res && res.publicKey) ? res.publicKey.toString() : (provider.publicKey ? provider.publicKey.toString() : null);
+    if (!pubKey) {
+      throw new Error("Failed to retrieve public key from provider.");
+    }
     connectedWalletAddress = pubKey;
 
     if (walletModalTitle) walletModalTitle.textContent = "VERIFYING KEN";
-    if (walletModalDesc) walletModalDesc.textContent = "Scanning Solana network for token balance…";
+    if (walletModalDesc) walletModalDesc.textContent = "Scanning Solana network for token balance (HEFkC6WQo3jTv39B6JhYQJ3ZW8xKxRELaWdnirdSpump)…";
 
     const verification = await workerRequest("/api/verify-ken", {
       method: "POST",
@@ -1596,7 +1603,17 @@ async function connectSolanaWallet(e) {
     render();
   } catch (err) {
     console.error("Wallet connection error:", err);
-    closeWalletModal();
+    if (walletModalTitle) walletModalTitle.textContent = "CONNECTION FAILED";
+    if (walletModalDesc) walletModalDesc.textContent = err.message || "Failed to connect to Solana wallet.";
+    if (walletInlineState) {
+      walletInlineState.innerHTML = `
+        <div style="border: 1px solid #333; padding: 14px; background: #0d0d0d; color: #fff; text-align: center; font-size: 11px;">
+          <p style="color: #ff4444; margin-bottom: 8px; font-weight: 700;">${escapeHtml(err.message || "Connection rejected or failed.")}</p>
+          <button type="button" class="payscreen__dl" onclick="openWalletModal()" style="background: #fff; color: #000; border-color: #fff; padding: 8px 14px; font-weight: 800; cursor: pointer;">TRY AGAIN</button>
+        </div>
+      `;
+      walletInlineState.hidden = false;
+    }
     if (actionBtn) actionBtn.hidden = false;
     btnText.textContent = "CONNECT WALLET (KEN)";
   }
