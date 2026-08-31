@@ -1493,6 +1493,7 @@ async function disconnectWalletSession() {
   isKenHolder = false;
   try {
     localStorage.clear();
+    localStorage.setItem("ken_disconnected", "true");
     localStorage.setItem("kencarter_user_disconnected", "true");
     if (window.solana && typeof window.solana.disconnect === "function") {
       await window.solana.disconnect();
@@ -1560,6 +1561,7 @@ async function connectSolanaWallet(e, walletType = "phantom") {
     e.stopPropagation();
   }
 
+  localStorage.removeItem("ken_disconnected");
   localStorage.removeItem("kencarter_user_disconnected");
 
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
