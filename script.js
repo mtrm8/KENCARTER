@@ -1488,6 +1488,18 @@ const walletModalSub = $("wallet-modal-sub");
 const walletSelectList = $("wallet-select-list");
 const walletInlineState = $("wallet-inline-state");
 
+function disconnectWalletSession() {
+  connectedWalletAddress = null;
+  isKenHolder = false;
+  const btnText = $("wallet-btn-text");
+  if (btnText) btnText.textContent = "CONNECT WALLET (KEN)";
+  const walletBtnEl = $("wallet-btn");
+  if (walletBtnEl) walletBtnEl.classList.remove("wallet-btn--holder");
+  rebuildCatalog();
+  render();
+  openWalletModal();
+}
+
 function openWalletModal() {
   if (!walletModal) return;
   if (walletModalTitle) walletModalTitle.textContent = "CONNECT SOLANA WALLET";
@@ -1620,13 +1632,18 @@ async function connectSolanaWallet(e, walletType = "phantom") {
             <p style="margin-bottom: 8px; font-weight: 700; font-size: 11px; letter-spacing: 0.08em;">ACQUIRE KEN TO UNLOCK VIP PERKS</p>
             <p style="margin-bottom: 14px; color: #888888; font-size: 10px; line-height: 1.5;">Hold KEN to activate your 15% lease discount, automated cashback, and Season 2 early access.</p>
             <a href="https://pump.fun/coin/HEFkC6WQo3jTv39B6JhYQJ3ZW8xKxRELaWdnirdSpump" target="_blank" rel="noopener noreferrer" class="payscreen__dl" style="display: block; text-decoration: none; background: #fff; color: #000; border-color: #fff; padding: 12px; font-weight: 800; font-size: 11px; text-transform: uppercase; margin-bottom: 10px;">BUY KEN ON PUMP.FUN &rarr;</a>
-            <button type="button" id="check-balance-btn" class="payscreen__dl" style="width: 100%; background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 12px; font-weight: 800; font-size: 11px; text-transform: uppercase; cursor: pointer;">CHECK BALANCE / I'VE BOUGHT KEN</button>
+            <button type="button" id="check-balance-btn" class="payscreen__dl" style="width: 100%; background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 12px; font-weight: 800; font-size: 11px; text-transform: uppercase; cursor: pointer; margin-bottom: 10px;">CHECK BALANCE / I'VE BOUGHT KEN</button>
+            <button type="button" id="switch-wallet-btn" style="display: block; width: 100%; background: transparent; color: #888888; border: none; font-family: inherit; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; cursor: pointer; text-decoration: underline; padding: 4px;">SWITCH WALLET / DISCONNECT</button>
           </div>
         `;
         walletInlineState.hidden = false;
         const checkBtn = $("check-balance-btn");
         if (checkBtn) {
           checkBtn.addEventListener("click", () => recheckKenBalance(pubKey));
+        }
+        const switchBtn = $("switch-wallet-btn");
+        if (switchBtn) {
+          switchBtn.addEventListener("click", disconnectWalletSession);
         }
       }
     }
@@ -1688,13 +1705,18 @@ async function recheckKenBalance(pubKey) {
             <p style="margin-bottom: 8px; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #ff4444;">BALANCE NOT DETECTED YET</p>
             <p style="margin-bottom: 14px; color: #888888; font-size: 10px; line-height: 1.5;">Ensure your purchase has settled on-chain, then click again.</p>
             <a href="https://pump.fun/coin/HEFkC6WQo3jTv39B6JhYQJ3ZW8xKxRELaWdnirdSpump" target="_blank" rel="noopener noreferrer" class="payscreen__dl" style="display: block; text-decoration: none; background: #fff; color: #000; border-color: #fff; padding: 12px; font-weight: 800; font-size: 11px; text-transform: uppercase; margin-bottom: 10px;">BUY KEN ON PUMP.FUN &rarr;</a>
-            <button type="button" id="check-balance-btn" class="payscreen__dl" style="width: 100%; background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 12px; font-weight: 800; font-size: 11px; text-transform: uppercase; cursor: pointer;">CHECK BALANCE / I'VE BOUGHT KEN</button>
+            <button type="button" id="check-balance-btn" class="payscreen__dl" style="width: 100%; background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 12px; font-weight: 800; font-size: 11px; text-transform: uppercase; cursor: pointer; margin-bottom: 10px;">CHECK BALANCE / I'VE BOUGHT KEN</button>
+            <button type="button" id="switch-wallet-btn" style="display: block; width: 100%; background: transparent; color: #888888; border: none; font-family: inherit; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; cursor: pointer; text-decoration: underline; padding: 4px;">SWITCH WALLET / DISCONNECT</button>
           </div>
         `;
         walletInlineState.hidden = false;
         const checkBtn = $("check-balance-btn");
         if (checkBtn) {
           checkBtn.addEventListener("click", () => recheckKenBalance(pubKey));
+        }
+        const switchBtn = $("switch-wallet-btn");
+        if (switchBtn) {
+          switchBtn.addEventListener("click", disconnectWalletSession);
         }
       }
     }
