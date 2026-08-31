@@ -1515,10 +1515,11 @@ async function connectSolanaWallet(e) {
     e.stopPropagation();
   }
 
-  const provider = window.solana || window.solflare || window.phantom?.solana || window.backpack || window.coinbaseSolana || window.glow;
+  const hasPhantomDesktop = window.solana && window.solana.isPhantom;
+  const provider = hasPhantomDesktop ? window.solana : (window.solana || window.solflare || window.phantom?.solana || window.backpack || window.coinbaseSolana || window.glow);
   const actionBtn = $("connect-wallet-action");
 
-  if (!provider) {
+  if (!provider && !hasPhantomDesktop) {
     const currentUrl = window.location.href;
     const phantomDeepLink = `https://phantom.app/ul/browse/${encodeURIComponent(currentUrl)}?ref=${encodeURIComponent(currentUrl)}`;
     if (walletInlineState) {
@@ -1547,8 +1548,9 @@ async function connectSolanaWallet(e) {
   const btnText = $("wallet-btn-text");
 
   try {
-    const res = await provider.connect();
-    const pubKey = (res && res.publicKey) ? res.publicKey.toString() : (provider.publicKey ? provider.publicKey.toString() : null);
+    const activeProvider = (window.solana && window.solana.isPhantom) ? window.solana : provider;
+    const res = await activeProvider.connect();
+    const pubKey = (res && res.publicKey) ? res.publicKey.toString() : (activeProvider.publicKey ? activeProvider.publicKey.toString() : null);
     if (!pubKey) {
       throw new Error("Failed to retrieve public key from provider.");
     }
@@ -1559,7 +1561,10 @@ async function connectSolanaWallet(e) {
 
     const verification = await workerRequest("/api/verify-ken", {
       method: "POST",
-      body: JSON.stringify({ walletAddress: pubKey })
+      body: JSON.stringify({
+        walletAddress: pubKey,
+        mint: "HEFkC6WQo3jTv39B6JhYQJ3ZW8xKxRELaWdnirdSpump"
+      })
     });
 
     if (verification && verification.holder) {
