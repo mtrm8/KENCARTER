@@ -1573,11 +1573,11 @@ async function connectSolanaWallet(e, walletType = "phantom") {
   if (walletModalSub) walletModalSub.hidden = true;
   if (walletModalTitle) walletModalTitle.textContent = "CONNECTING";
   if (walletModalDesc) walletModalDesc.textContent = "Approving connection with your Solana wallet…";
+  if (walletSelectList) walletSelectList.hidden = true;
   if (walletInlineState) {
     walletInlineState.innerHTML = `<div class="wallet-loading-spinner"></div>`;
     walletInlineState.hidden = false;
   }
-  allOptionBtns.forEach(btn => btn.hidden = true);
 
   const btnText = $("wallet-btn-text");
 
@@ -1654,6 +1654,7 @@ async function connectSolanaWallet(e, walletType = "phantom") {
 async function recheckKenBalance(pubKey) {
   if (walletModalTitle) walletModalTitle.textContent = "RE-SCANNING KEN";
   if (walletModalDesc) walletModalDesc.textContent = "Checking blockchain for updated token balance…";
+  if (walletSelectList) walletSelectList.hidden = true;
   if (walletInlineState) {
     walletInlineState.innerHTML = `<div class="wallet-loading-spinner" style="margin: 20px auto;"></div>`;
     walletInlineState.hidden = false;
