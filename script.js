@@ -1627,10 +1627,15 @@ async function connectSolanaWallet(e, walletType = "phantom") {
           <div style="border: 1px solid #333; padding: 16px; background: #0d0d0d; color: #fff; text-align: center;">
             <p style="margin-bottom: 8px; font-weight: 700; font-size: 11px; letter-spacing: 0.08em;">ACQUIRE KEN TO UNLOCK VIP PERKS</p>
             <p style="margin-bottom: 14px; color: #888888; font-size: 10px; line-height: 1.5;">Hold KEN to activate your 15% lease discount, automated cashback, and Season 2 early access.</p>
-            <a href="https://pump.fun/coin/HEFkC6WQo3jTv39B6JhYQJ3ZW8xKxRELaWdnirdSpump" target="_blank" rel="noopener noreferrer" class="payscreen__dl" style="display: block; text-decoration: none; background: #fff; color: #000; border-color: #fff; padding: 12px; font-weight: 800; font-size: 11px; text-transform: uppercase;">BUY KEN ON PUMP.FUN &rarr;</a>
+            <a href="https://pump.fun/coin/HEFkC6WQo3jTv39B6JhYQJ3ZW8xKxRELaWdnirdSpump" target="_blank" rel="noopener noreferrer" class="payscreen__dl" style="display: block; text-decoration: none; background: #fff; color: #000; border-color: #fff; padding: 12px; font-weight: 800; font-size: 11px; text-transform: uppercase; margin-bottom: 10px;">BUY KEN ON PUMP.FUN &rarr;</a>
+            <button type="button" id="check-balance-btn" class="payscreen__dl" style="width: 100%; background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 12px; font-weight: 800; font-size: 11px; text-transform: uppercase; cursor: pointer;">CHECK BALANCE / I'VE BOUGHT KEN</button>
           </div>
         `;
         walletInlineState.hidden = false;
+        const checkBtn = $("check-balance-btn");
+        if (checkBtn) {
+          checkBtn.addEventListener("click", () => recheckKenBalance(pubKey));
+        }
       }
     }
     rebuildCatalog();
@@ -1650,6 +1655,74 @@ async function connectSolanaWallet(e, walletType = "phantom") {
     }
     allOptionBtns.forEach(btn => btn.hidden = false);
     if (btnText) btnText.textContent = "CONNECT WALLET (KEN)";
+  }
+}
+
+async function recheckKenBalance(pubKey) {
+  if (walletModalTitle) walletModalTitle.textContent = "RE-SCANNING KEN";
+  if (walletModalDesc) walletModalDesc.textContent = "Checking blockchain for updated token balance…";
+  if (walletInlineState) {
+    walletInlineState.innerHTML = `<div class="wallet-loading-spinner" style="margin: 20px auto;"></div>`;
+    walletInlineState.hidden = false;
+  }
+
+  try {
+    const verification = await workerRequest("/api/verify-ken", {
+      method: "POST",
+      body: JSON.stringify({
+        walletAddress: pubKey,
+        mint: "HEFkC6WQo3jTv39B6JhYQJ3ZW8xKxRELaWdnirdSpump"
+      })
+    });
+
+    const btnText = $("wallet-btn-text");
+    if (verification && verification.holder) {
+      isKenHolder = true;
+      if (btnText) btnText.textContent = `KEN HOLDER ✓ (${verification.balance.toLocaleString()} KEN)`;
+      const walletBtnEl = $("wallet-btn");
+      if (walletBtnEl) walletBtnEl.classList.add("wallet-btn--holder");
+
+      if (walletModalTitle) walletModalTitle.textContent = "VERIFIED HOLDER";
+      if (walletModalDesc) walletModalDesc.textContent = "KEN token balance confirmed on-chain.";
+      if (walletInlineState) {
+        walletInlineState.innerHTML = `
+          <div style="text-align: center; padding: 12px;">
+            <div style="font-size: 32px; font-weight: 700; color: #fff; margin: 6px auto 8px auto;">✓</div>
+            <p style="margin-top: 4px; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; color: #fff;">15% DISCOUNT &amp; VIP PERKS UNLOCKED</p>
+          </div>
+        `;
+        walletInlineState.hidden = false;
+      }
+
+      setTimeout(() => {
+        closeWalletModal();
+      }, 1200);
+    } else {
+      isKenHolder = false;
+      if (walletModalTitle) walletModalTitle.textContent = "KEN TOKEN REQUIRED";
+      if (walletModalDesc) walletModalDesc.textContent = "Still no KEN tokens detected in this wallet.";
+      if (walletInlineState) {
+        walletInlineState.innerHTML = `
+          <div style="border: 1px solid #333; padding: 16px; background: #0d0d0d; color: #fff; text-align: center;">
+            <p style="margin-bottom: 8px; font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: #ff4444;">BALANCE NOT DETECTED YET</p>
+            <p style="margin-bottom: 14px; color: #888888; font-size: 10px; line-height: 1.5;">Ensure your purchase has settled on-chain, then click again.</p>
+            <a href="https://pump.fun/coin/HEFkC6WQo3jTv39B6JhYQJ3ZW8xKxRELaWdnirdSpump" target="_blank" rel="noopener noreferrer" class="payscreen__dl" style="display: block; text-decoration: none; background: #fff; color: #000; border-color: #fff; padding: 12px; font-weight: 800; font-size: 11px; text-transform: uppercase; margin-bottom: 10px;">BUY KEN ON PUMP.FUN &rarr;</a>
+            <button type="button" id="check-balance-btn" class="payscreen__dl" style="width: 100%; background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 12px; font-weight: 800; font-size: 11px; text-transform: uppercase; cursor: pointer;">CHECK BALANCE / I'VE BOUGHT KEN</button>
+          </div>
+        `;
+        walletInlineState.hidden = false;
+        const checkBtn = $("check-balance-btn");
+        if (checkBtn) {
+          checkBtn.addEventListener("click", () => recheckKenBalance(pubKey));
+        }
+      }
+    }
+    rebuildCatalog();
+    render();
+  } catch (err) {
+    console.error("Recheck balance error:", err);
+    if (walletModalTitle) walletModalTitle.textContent = "VERIFICATION FAILED";
+    if (walletModalDesc) walletModalDesc.textContent = err.message || "Failed to query network.";
   }
 }
 
