@@ -1496,38 +1496,20 @@ function openWalletModal() {
   if (walletSelectList) {
     walletSelectList.innerHTML = `
       <button class="wallet-option-btn" id="connect-phantom-btn" type="button">
-        <span class="wallet-option-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 0 1 7.54 16.54l-2.83-2.83A6 6 0 1 0 12 18V2z"/></svg></span>
+        <span class="wallet-option-icon"><svg viewBox="0 0 128 128" width="18" height="18" fill="currentColor"><path d="M64 0C28.7 0 0 28.7 0 64s28.7 64 64 64 64-28.7 64-64S99.3 0 64 0zm31.4 89.2c-1.3 2.1-4 2.7-6.1 1.4-15.9-9.8-35.8-12-59.3-6.6-2.4.6-4.8-1-5.4-3.4-.6-2.4 1-4.8 3.4-5.4 25.4-5.9 47.7-3.4 65.1 7.5 2.1 1.3 2.7 4 1.3 6.1zm8.3-22c-1.6 2.5-4.9 3.3-7.4 1.7-18.4-11.3-46.5-14.7-68.2-8-2.8.9-5.8-.7-6.7-3.5-.9-2.8.7-5.8 3.5-6.7 24.3-7.4 55.4-3.6 76.2 9.4 2.5 1.6 3.3 4.9 1.6 7.3zm1.1-23.2C81.8 30.5 44 29.5 23.9 35.6c-3.4 1-7-0.9-8-4.3-1-3.4 0.9-7 4.3-8 23.3-7 65.1-5.9 92.5 10.2 3 1.8 4 5.7 2.2 8.7-1.8 3-5.7 4-8.7 2.2z"/></svg></span>
         <span class="wallet-option-text">CONNECT PHANTOM</span>
       </button>
       <button class="wallet-option-btn" id="connect-solflare-btn" type="button">
-        <span class="wallet-option-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg></span>
+        <span class="wallet-option-icon"><svg viewBox="0 0 512 512" width="18" height="18" fill="currentColor"><path d="M256 0C114.6 0 0 114.6 0 256s114.6 256 256 256 256-114.6 256-256S397.4 0 256 0zm0 464c-114.9 0-208-93.1-208-208S141.1 48 256 48s208 93.1 208 208-93.1 208-208 208zm56.8-312.8L192 240l88 32-120 104 144-112-80-24 104-48z"/></svg></span>
         <span class="wallet-option-text">CONNECT SOLFLARE</span>
-      </button>
-      <button class="wallet-option-btn" id="connect-backpack-btn" type="button">
-        <span class="wallet-option-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="15" rx="2"/><path d="M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></span>
-        <span class="wallet-option-text">CONNECT BACKPACK</span>
-      </button>
-      <button class="wallet-option-btn" id="connect-coinbase-btn" type="button">
-        <span class="wallet-option-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span>
-        <span class="wallet-option-text">CONNECT COINBASE WALLET</span>
-      </button>
-      <button class="wallet-option-btn" id="connect-trust-btn" type="button">
-        <span class="wallet-option-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
-        <span class="wallet-option-text">CONNECT TRUST WALLET</span>
       </button>
     `;
 
     const phantomBtn = $("connect-phantom-btn");
     const solflareBtn = $("connect-solflare-btn");
-    const backpackBtn = $("connect-backpack-btn");
-    const coinbaseBtn = $("connect-coinbase-btn");
-    const trustBtn = $("connect-trust-btn");
 
     if (phantomBtn) phantomBtn.addEventListener("click", () => connectSolanaWallet(null, "phantom"));
     if (solflareBtn) solflareBtn.addEventListener("click", () => connectSolanaWallet(null, "solflare"));
-    if (backpackBtn) backpackBtn.addEventListener("click", () => connectSolanaWallet(null, "backpack"));
-    if (coinbaseBtn) coinbaseBtn.addEventListener("click", () => connectSolanaWallet(null, "coinbase"));
-    if (trustBtn) trustBtn.addEventListener("click", () => connectSolanaWallet(null, "trust"));
   }
   if (walletInlineState) {
     walletInlineState.hidden = true;
@@ -1560,12 +1542,6 @@ async function connectSolanaWallet(e, walletType = "phantom") {
       window.location.href = `https://solflare.com/ul/v1/browse/${encodedUrl}`;
       return;
     }
-  } else if (walletType === "backpack") {
-    provider = window.backpack || window.solana;
-  } else if (walletType === "coinbase") {
-    provider = window.coinbaseSolana || window.solana;
-  } else if (walletType === "trust") {
-    provider = window.trustwallet?.solana || window.solana;
   } else {
     provider = window.solana || window.phantom?.solana;
     if (!provider && isMobile) {
