@@ -1503,6 +1503,9 @@ function openWalletModal() {
         <span class="wallet-option-icon"><img src="assets/images/solflare.svg?v=3" alt="Solflare" width="18" height="18" style="display:block; width:18px; height:18px;" /></span>
         <span class="wallet-option-text">CONNECT SOLFLARE</span>
       </button>
+      <div style="margin-top: 16px; text-align: center; font-size: 10px; color: #888888; letter-spacing: 0.06em;">
+        Don't have a wallet? Download <a href="https://phantom.app/download" target="_blank" rel="noopener noreferrer" style="color: #fff; text-decoration: underline;">Phantom</a> or <a href="https://solflare.com/download" target="_blank" rel="noopener noreferrer" style="color: #fff; text-decoration: underline;">Solflare</a>
+      </div>
     `;
 
     const phantomBtn = $("connect-phantom-btn");
@@ -1644,19 +1647,7 @@ async function connectSolanaWallet(e, walletType = "phantom") {
     render();
   } catch (err) {
     console.error("Wallet connection error:", err);
-    if (walletModalTitle) walletModalTitle.textContent = "CONNECTION FAILED";
-    if (walletModalDesc) walletModalDesc.textContent = err.message || "Failed to connect to Solana wallet.";
-    if (walletInlineState) {
-      walletInlineState.innerHTML = `
-        <div style="border: 1px solid #333; padding: 14px; background: #0d0d0d; color: #fff; text-align: center; font-size: 11px;">
-          <p style="color: #ff4444; margin-bottom: 8px; font-weight: 700;">${escapeHtml(err.message || "Connection rejected or failed.")}</p>
-          <button type="button" class="payscreen__dl" onclick="openWalletModal()" style="background: #fff; color: #000; border-color: #fff; padding: 8px 14px; font-weight: 800; cursor: pointer;">TRY AGAIN</button>
-        </div>
-      `;
-      walletInlineState.hidden = false;
-    }
-    allOptionBtns.forEach(btn => btn.hidden = false);
-    if (btnText) btnText.textContent = "CONNECT WALLET (KEN)";
+    openWalletModal();
   }
 }
 
