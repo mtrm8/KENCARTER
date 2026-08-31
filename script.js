@@ -1496,11 +1496,11 @@ function openWalletModal() {
   if (walletSelectList) {
     walletSelectList.innerHTML = `
       <button class="wallet-option-btn" id="connect-phantom-btn" type="button">
-        <span class="wallet-option-icon"><svg viewBox="0 0 512 512" width="18" height="18" fill="#fff" xmlns="http://www.w3.org/2000/svg"><path d="M437.3 227.8c-5.8-59.5-51.4-106.8-111-115.4-30.8-4.5-62.1 3.2-87.1 21.3-25-18.1-56.3-25.8-87.1-21.3-59.6 8.6-105.2 55.9-111 115.4-7.3 75.8 19.2 150.3 72.8 200.7l29.4-26.9c-45-42.3-66.2-104.9-59.8-169.5 4.5-46.6 40.3-83.7 86.9-90.4 24.1-3.5 48.7 3.3 67.8 18.9 14.1 11.5 32 11.5 46.1 0 19.1-15.6 43.7-22.4 67.8-18.9 46.6 6.7 82.4 43.8 86.9 90.4 6.4 64.6-14.8 127.2-59.8 169.5l29.4 26.9c53.6-50.4 80.1-124.9 72.8-200.7zM256 341.3c-47.1 0-85.3-38.2-85.3-85.3s38.2-85.3 85.3-85.3 85.3 38.2 85.3 85.3-38.2 85.3-85.3 85.3z"/></svg></span>
+        <span class="wallet-option-icon"><img src="assets/images/phantom.svg?v=3" alt="Phantom" width="18" height="18" style="display:block; width:18px; height:18px;" /></span>
         <span class="wallet-option-text">CONNECT PHANTOM</span>
       </button>
       <button class="wallet-option-btn" id="connect-solflare-btn" type="button">
-        <span class="wallet-option-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"/><path d="M12 2v20M2 12h20"/><path d="m4.93 4.93 14.14 14.14M4.93 19.07 19.07 4.93"/></svg></span>
+        <span class="wallet-option-icon"><img src="assets/images/solflare.svg?v=3" alt="Solflare" width="18" height="18" style="display:block; width:18px; height:18px;" /></span>
         <span class="wallet-option-text">CONNECT SOLFLARE</span>
       </button>
     `;
