@@ -1489,6 +1489,7 @@ const walletSelectList = $("wallet-select-list");
 const walletInlineState = $("wallet-inline-state");
 
 async function disconnectWalletSession() {
+  window._forceDisconnected = true;
   connectedWalletAddress = null;
   isKenHolder = false;
   try {
@@ -1519,6 +1520,14 @@ async function disconnectWalletSession() {
 
 function openWalletModal() {
   if (!walletModal) return;
+  if (localStorage.getItem("ken_disconnected") === "true" || localStorage.getItem("kencarter_user_disconnected") === "true") {
+    window._forceDisconnected = true;
+  }
+  if (window._forceDisconnected) {
+    connectedWalletAddress = null;
+    isKenHolder = false;
+  }
+
   if (walletModalTitle) walletModalTitle.textContent = "CONNECT SOLANA WALLET";
   if (walletModalDesc) walletModalDesc.textContent = "Connect your wallet to verify KEN holdings and unlock your 15% discount & automated cashback.";
   if (walletModalSub) walletModalSub.hidden = false;
