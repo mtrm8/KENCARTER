@@ -1,0 +1,9 @@
+{
+  "name": "ken-carter-store",
+  "private": true,
+  "scripts": {
+    "start": "node server.mjs",
+    "dev:worker": "cd worker && npm run dev",
+    "preview": "node server.mjs"
+  }
+}

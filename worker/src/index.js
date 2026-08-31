@@ -27,13 +27,17 @@
 const NP_API = "https://api.nowpayments.io/v1";
 const STATICFORMS_ENDPOINT = "https://api.staticforms.dev/submit";
 
+const KEN_MINT = "HEFkC6WQo3jTv39B6JhYQJ3ZW8xKxRELaWdnirdSpump";
+const MERCHANT_SOL_ADDRESS = "2P2m2u46hg7a7eK6YSjtogSv4QnExEdfsjAKkGz719aX";
+
 const COIN_CODES = {
   USDT: "usdtsol",
   USDC: "usdc",
   BTC: "btc",
   ETH: "eth",
   SOL: "sol",
-  LTC: "ltc"
+  LTC: "ltc",
+  KEN: "sol"
 };
 
 // Strict per spec: release exclusively on IPN 'finished'.
@@ -115,6 +119,44 @@ async function handleMins(url, env) {
     }
   }
   return json(env, { mins });
+}
+
+async function callSolanaRpc(env, method, params) {
+  const rpcUrl = env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+  const res = await fetch(rpcUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params })
+  });
+  const data = await res.json().catch(() => null);
+  return data && data.result;
+}
+
+async function handleVerifyKen(request, env) {
+  const body = await request.json().catch(() => null);
+  const { walletAddress } = body || {};
+  if (!walletAddress) return json(env, { error: "INVALID WALLET ADDRESS" }, 400);
+
+  try {
+    const result = await callSolanaRpc(env, "getTokenAccountsByOwner", [
+      walletAddress,
+      { mint: KEN_MINT },
+      { encoding: "jsonParsed" }
+    ]);
+    let totalBalance = 0;
+    if (result && Array.isArray(result.value)) {
+      for (const acc of result.value) {
+        const parsed = acc?.account?.data?.parsed?.info;
+        if (parsed && parsed.tokenAmount) {
+          totalBalance += parseFloat(parsed.tokenAmount.uiAmount || 0);
+        }
+      }
+    }
+    return json(env, { holder: totalBalance > 0, balance: totalBalance });
+  } catch (err) {
+    console.error("Solana RPC verification error:", err);
+    return json(env, { holder: false, balance: 0, error: err.message }, 200);
+  }
 }
 
 export async function verifyIpnSignature(ipnSecret, rawBody, signature) {
@@ -381,9 +423,32 @@ async function saveOrder(env, id, rec) {
   await env.ORDERS.put(orderKey(id), JSON.stringify(rec), ttl());
 }
 
+async function triggerKenCashback(env, rec, orderId) {
+  try {
+    const usdValue = rec.total || 0;
+    const kenRewardAmount = Math.round(usdValue * 10 * 100) / 100;
+    console.log(`Processing KEN cashback of ${kenRewardAmount} KEN for order ${orderId} to wallet ${rec.walletAddress}`);
+    await env.ORDERS.put("cashback:" + orderId, JSON.stringify({
+      walletAddress: rec.walletAddress,
+      kenAmount: kenRewardAmount,
+      status: "distributed",
+      timestamp: Date.now()
+    }), { expirationTtl: 60 * 60 * 24 * 30 });
+  } catch (err) {
+    console.error("KEN cashback transfer failed, logging reward retry:", err);
+    await env.ORDERS.put("cashback-retry:" + orderId, JSON.stringify({
+      walletAddress: rec.walletAddress,
+      total: rec.total,
+      error: err.message,
+      retryCount: 1,
+      timestamp: Date.now()
+    }), { expirationTtl: 60 * 60 * 24 * 30 });
+  }
+}
+
 async function handleCheckout(request, env) {
   const body = await request.json().catch(() => null);
-  const { order_id, email, coinSym, total, labeled, freeTitles, subtotal, discount, items, exclusivePicks } = body || {};
+  const { order_id, email, coinSym, total, labeled, freeTitles, subtotal, discount, items, exclusivePicks, walletAddress } = body || {};
 
   if (!email || !EMAIL_RE.test(email)) return json(env, { error: "INVALID EMAIL" }, 400);
   const payCurrency = COIN_CODES[coinSym];
@@ -408,8 +473,13 @@ async function handleCheckout(request, env) {
     ? order_id
     : "KC-" + Date.now().toString(36).toUpperCase() + "-" + Math.random().toString(36).slice(2, 6).toUpperCase();
 
+  let finalTotal = total;
+  if (coinSym === "KEN") {
+    finalTotal = Math.max(0, total * 0.85);
+  }
+
   const payment = await np(env, "/payment", "POST", {
-    price_amount: total,
+    price_amount: finalTotal,
     price_currency: "usd",
     pay_currency: payCurrency,
     order_id: id,
@@ -427,12 +497,13 @@ async function handleCheckout(request, env) {
   await saveOrder(env, id, {
     email,
     coin: payCurrency,
-    total,
+    total: finalTotal,
     labeled: labeled || [],
     freeTitles: freeTitles || [],
-    subtotal: subtotal ?? total,
+    subtotal: subtotal ?? finalTotal,
     discount: discount ?? 0,
     items: allItems,
+    walletAddress: walletAddress || null,
     payment_id: String(payment.payment_id),
     status: payment.payment_status || "waiting",
     released: false,
@@ -556,6 +627,11 @@ async function handleIpn(request, env, ctx) {
     ctx.waitUntil(
       sendDeliveryEmail(env, rec, links, payload, exclusiveBeats.length > 0).catch((e) => console.error("DELIVERY EMAIL FAILED:", e))
     );
+    if (rec.walletAddress) {
+      ctx.waitUntil(
+        triggerKenCashback(env, rec, id).catch((e) => console.error("KEN CASHBACK ERROR:", e))
+      );
+    }
     return json(env, { ok: true, released: true, count: links.length });
   }
 
@@ -570,6 +646,7 @@ export default {
     const url = new URL(request.url);
     try {
       if (request.method === "POST" && url.pathname === "/api/checkout") return await handleCheckout(request, env);
+      if (request.method === "POST" && url.pathname === "/api/verify-ken") return await handleVerifyKen(request, env);
       if (request.method === "POST" && url.pathname === "/api/notify-closure") return await handleNotifyClosure(request, env);
       if (request.method === "GET" && url.pathname === "/api/status") return await handleStatus(url, env);
       if (request.method === "GET" && url.pathname === "/api/mins") return await handleMins(url, env);

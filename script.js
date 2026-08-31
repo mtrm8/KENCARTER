@@ -1,7 +1,9 @@
 // Cloudflare Worker backend — performs every NOWPayments call, holds the
 // download URLs, and dispatches the delivery email after an HMAC-verified
 // 'finished' IPN. Nothing order-related is submitted from this file.
-const WORKER_URL = "https://kencarter-checkout.kencarter-store.workers.dev";
+const WORKER_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+  ? "http://localhost:8787"
+  : "https://kencarter-checkout.kencarter-store.workers.dev";
 
 const PRICE = 14.95;
 const EXCLUSIVE_PRICE = 299.95;
@@ -78,7 +80,7 @@ function seasonBadge(s) {
 const TICKER_TEXT = "KEN CARTER \u2014 SEASON 01 IS LIVE \u2014 STRICTLY LIMITED LEASES \u2014 ALL BEATS $14.95 \u2014 PICK 2, GET 1 FREE \u2014 ";
 
 const S01_CLOSE_AT = "2026-08-29T20:00:00Z";
-const S02_OPEN_AT  = "2026-09-01T00:00:00Z";
+const S02_OPEN_AT  = "2026-09-01T20:00:00Z";
 const S02_FINAL_DROP_AT = "2026-09-25T20:00:00Z";
 const S02_CLOSE_AT = "2026-09-30T20:00:00Z";
 const DAY_MS       = 24 * 60 * 60 * 1000;
@@ -201,7 +203,10 @@ function tickBeatCountdowns() {
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 
 const releaseDate = (b) => (b.releaseAt ? new Date(b.releaseAt) : null);
-const isReleased = (b) => !b.releaseAt || Date.now() >= releaseDate(b).getTime();
+const isReleased = (b) => {
+  if (isKenHolder && b.tag === "SEASON 02") return true;
+  return !b.releaseAt || Date.now() >= releaseDate(b).getTime();
+};
 const isSoldOut = (b) => b.soldOut || b.left <= 0;
 
 const byNewest = (a, b) => BEATS.indexOf(b) - BEATS.indexOf(a);
@@ -261,6 +266,11 @@ const backdrop = $("backdrop");
 const BTC_ENDPOINT =
   "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,tether,usd-coin&vs_currencies=usd";
 
+const KEN_MINT = "HEFkC6WQo3jTv39B6JhYQJ3ZW8xKxRELaWdnirdSpump";
+const MERCHANT_SOL_ADDRESS = "2P2m2u46hg7a7eK6YSjtogSv4QnExEdfsjAKkGz719aX";
+let connectedWalletAddress = null;
+let isKenHolder = false;
+
 const ASSETS = {
   USDT: {
     sym: "USDT", name: "TETHER", id: "tether", np: "usdtsol",
@@ -285,6 +295,10 @@ const ASSETS = {
   LTC: {
     sym: "LTC", name: "LITECOIN", id: null, np: "ltc",
     icon: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><text x="12" y="16.6" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12.5" font-weight="700" fill="currentColor">\u0141</text></svg>`
+  },
+  KEN: {
+    sym: "KEN", name: "KEN TOKEN", id: "ken", np: "sol", mint: KEN_MINT, discount: 0.15,
+    icon: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><text x="12" y="16.6" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="700" fill="currentColor">K</text></svg>`
   }
 };
 
@@ -311,6 +325,13 @@ const PAYMENT_GROUPS = [
     sub: "ETH OR SOLANA",
     assets: ["ETH", "SOL"],
     icon: ASSETS.ETH.icon
+  },
+  {
+    value: "KEN Token (KEN)",
+    label: "KEN",
+    sub: "COMMUNITY TOKEN \u00b7 15% OFF",
+    assets: ["KEN"],
+    icon: ASSETS.KEN.icon
   }
 ];
 
@@ -624,7 +645,10 @@ function totals() {
   const subtotal = basicCount * PRICE + exclusiveCount * EXCLUSIVE_PRICE;
   const freeCount = [...freePicks].filter((id) => selected.has(id)).length;
   const discount = freeCount * PRICE;
-  const total = Math.max(0, subtotal - discount);
+  let total = Math.max(0, subtotal - discount);
+  if (payAssetSym === "KEN") {
+    total = Math.max(0, total * 0.85); // 15% discount modifier for $KEN payments
+  }
   return { n, exclusiveN: exclusiveCount, basicCount, exclusiveCount, subtotal, freeCount, discount, total };
 }
 
@@ -891,7 +915,8 @@ function submitOrder(e) {
     total,
     items,
     exclusivePicks: exclusiveChosen.map((b) => b.id),
-    exclusiveTitles: exclusiveChosen.map((b) => b.title)
+    exclusiveTitles: exclusiveChosen.map((b) => b.title),
+    walletAddress: connectedWalletAddress || null
   };
 
   finishOrder();
@@ -1079,7 +1104,8 @@ async function startNpPayment(sym) {
         subtotal: payScreenOrder.subtotal,
         discount: payScreenOrder.discount,
         items: payScreenOrder.items,
-        exclusivePicks: payScreenOrder.exclusivePicks || []
+        exclusivePicks: payScreenOrder.exclusivePicks || [],
+        walletAddress: payScreenOrder.walletAddress || null
       })
     });
     const alertEl = $("payscreen-alert");
@@ -1351,6 +1377,12 @@ $("close").addEventListener("click", resetDrawer);
 backdrop.addEventListener("click", resetDrawer);
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
+  const walletModal = $("wallet-modal");
+  if (walletModal && !walletModal.hidden) {
+    walletModal.hidden = true;
+    document.body.style.overflow = "";
+    return;
+  }
   if (hidePayscreen()) window.scrollTo({ top: 0 });
   else resetDrawer();
 });
@@ -1446,4 +1478,145 @@ if (notifyLink) {
       }
     }, 250);
   });
+}
+
+const walletModal = $("wallet-modal");
+const walletModalClose = $("wallet-modal-close");
+const walletModalTitle = $("wallet-modal-title");
+const walletModalDesc = $("wallet-modal-desc");
+const walletModalSub = $("wallet-modal-sub");
+const walletSelectList = $("wallet-select-list");
+const walletInlineState = $("wallet-inline-state");
+
+function openWalletModal() {
+  if (!walletModal) return;
+  if (walletModalTitle) walletModalTitle.textContent = "CONNECT SOLANA WALLET";
+  if (walletModalDesc) walletModalDesc.textContent = "Connect your wallet to verify KEN holdings and unlock your 15% discount & automated cashback.";
+  if (walletModalSub) walletModalSub.hidden = false;
+  const actionBtn = $("connect-wallet-action");
+  if (actionBtn) actionBtn.hidden = false;
+  if (walletInlineState) {
+    walletInlineState.hidden = true;
+    walletInlineState.innerHTML = "";
+  }
+  walletModal.hidden = false;
+  document.body.style.overflow = "hidden";
+}
+
+function closeWalletModal() {
+  if (!walletModal) return;
+  walletModal.hidden = true;
+  document.body.style.overflow = "";
+}
+
+async function connectSolanaWallet(e) {
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  const provider = window.solana || window.phantom?.solana || window.solflare || window.backpack || window.coinbaseSolana || window.glow;
+  const actionBtn = $("connect-wallet-action");
+
+  if (!provider) {
+    if (walletInlineState) {
+      walletInlineState.innerHTML = `
+        <div style="border: 1px solid #333; padding: 14px; background: #0d0d0d; color: #fff; text-align: center; font-size: 11px; line-height: 1.6;">
+          Please open this page inside a browser with a Solana wallet extension (Phantom, Solflare, etc.) enabled.
+        </div>
+      `;
+      walletInlineState.hidden = false;
+    }
+    if (actionBtn) actionBtn.hidden = false;
+    return;
+  }
+
+  if (walletModalSub) walletModalSub.hidden = true;
+  if (walletModalTitle) walletModalTitle.textContent = "CONNECTING";
+  if (walletModalDesc) walletModalDesc.textContent = "Approving connection with your Solana wallet…";
+  if (walletInlineState) {
+    walletInlineState.innerHTML = `<div class="wallet-loading-spinner"></div>`;
+    walletInlineState.hidden = false;
+  }
+  if (actionBtn) actionBtn.hidden = true;
+
+  const btnText = $("wallet-btn-text");
+
+  try {
+    const res = await provider.connect();
+    const pubKey = res.publicKey ? res.publicKey.toString() : provider.publicKey.toString();
+    connectedWalletAddress = pubKey;
+
+    if (walletModalTitle) walletModalTitle.textContent = "VERIFYING KEN";
+    if (walletModalDesc) walletModalDesc.textContent = "Scanning Solana network for token balance…";
+
+    const verification = await workerRequest("/api/verify-ken", {
+      method: "POST",
+      body: JSON.stringify({ walletAddress: pubKey })
+    });
+
+    if (verification && verification.holder) {
+      isKenHolder = true;
+      btnText.textContent = `KEN HOLDER ✓ (${verification.balance.toLocaleString()} KEN)`;
+      $("wallet-btn").classList.add("wallet-btn--holder");
+
+      if (walletModalTitle) walletModalTitle.textContent = "VERIFIED HOLDER";
+      if (walletModalDesc) walletModalDesc.textContent = "KEN token balance confirmed on-chain.";
+      if (walletInlineState) {
+        walletInlineState.innerHTML = `
+          <div style="text-align: center; padding: 10px;">
+            <div style="font-size: 28px; font-weight: 700; color: #fff; margin: 10px auto;">✓</div>
+            <p style="margin-top: 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: #fff;">15% DISCOUNT &amp; VIP PERKS UNLOCKED</p>
+          </div>
+        `;
+        walletInlineState.hidden = false;
+      }
+
+      setTimeout(() => {
+        closeWalletModal();
+      }, 1200);
+    } else {
+      isKenHolder = false;
+      btnText.textContent = `${pubKey.slice(0, 4)}…${pubKey.slice(-4)} (CONNECTED)`;
+
+      if (walletModalTitle) walletModalTitle.textContent = "KEN TOKEN REQUIRED";
+      if (walletModalDesc) walletModalDesc.textContent = "Wallet connected successfully, but no KEN tokens were detected.";
+      if (walletInlineState) {
+        walletInlineState.innerHTML = `
+          <div style="border: 1px solid #333; padding: 16px; background: #0d0d0d; color: #fff; text-align: center;">
+            <p style="margin-bottom: 8px; font-weight: 700; font-size: 11px; letter-spacing: 0.08em;">ACQUIRE KEN TO UNLOCK VIP PERKS</p>
+            <p style="margin-bottom: 14px; color: #888888; font-size: 10px; line-height: 1.5;">Hold KEN to activate your 15% lease discount, automated cashback, and Season 2 early access.</p>
+            <a href="https://raydium.io/swap/?inputMint=sol&outputMint=HEFkC6WQo3jTv39B6JhYQJ3ZW8xKxRELaWdnirdSpump" target="_blank" rel="noopener noreferrer" class="payscreen__dl" style="display: block; text-decoration: none; background: #fff; color: #000; border-color: #fff; padding: 12px; font-weight: 800; font-size: 11px;">SWAP FOR KEN ON RAYDIUM &rarr;</a>
+          </div>
+        `;
+        walletInlineState.hidden = false;
+      }
+    }
+    rebuildCatalog();
+    render();
+  } catch (err) {
+    console.error("Wallet connection error:", err);
+    closeWalletModal();
+    if (actionBtn) actionBtn.hidden = false;
+    btnText.textContent = "CONNECT WALLET (KEN)";
+  }
+}
+
+const walletBtn = $("wallet-btn");
+if (walletBtn) {
+  walletBtn.addEventListener("click", openWalletModal);
+}
+
+if (walletModalClose) {
+  walletModalClose.addEventListener("click", closeWalletModal);
+}
+
+if (walletModal) {
+  walletModal.addEventListener("click", (e) => {
+    if (e.target === walletModal) closeWalletModal();
+  });
+  const connectActionBtn = $("connect-wallet-action");
+  if (connectActionBtn) {
+    connectActionBtn.addEventListener("click", connectSolanaWallet);
+  }
 }

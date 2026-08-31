@@ -39,6 +39,9 @@
         <button class="header-notify-link" id="header-notify-link" type="button">
           &larr; Get notified for Season 2
         </button>
+        <button class="wallet-btn" id="wallet-btn" type="button">
+          <span id="wallet-btn-text">CONNECT WALLET (KEN)</span>
+        </button>
       </div>
     </div>
   </header>
@@ -46,7 +49,21 @@
   <section class="drop-banner" aria-label="Season 02 drop countdown">
     <span class="drop-banner__kicker" id="s02-kicker">SEASON 02 &mdash; NEXT DROP IN</span>
     <p class="drop-banner__timer" id="s02-timer">&mdash;</p>
-    <span class="drop-banner__target">TUE SEP 1, 2026 &mdash; 00:00 UTC</span>
+    <span class="drop-banner__target">TUE SEP 1, 2026 &mdash; 20:00 UTC</span>
+  </section>
+
+  <section class="ken-benefits" aria-label="KEN Token Holder Benefits">
+    <div class="ken-benefits__inner">
+      <span class="ken-benefits__kicker">KEN TOKEN HOLDER PERKS</span>
+      <div class="ken-benefits__grid">
+        <div class="ken-benefits__item">
+          <strong>15% OFF</strong> &mdash; ALL BEATS WHEN PAYING WITH KEN
+        </div>
+        <div class="ken-benefits__item">
+          <strong>AUTOMATED CASHBACK</strong> &mdash; EARN KEN REWARDS STRAIGHT TO YOUR WALLET
+        </div>
+      </div>
+    </div>
   </section>
 
     <section class="offer" aria-label="Offer">
@@ -87,6 +104,10 @@
         <div class="totals__discount" id="t-discount-row" hidden><dt>YOUR FREE BEAT</dt><dd id="t-discount">&minus;$0.00</dd></div>
         <div class="totals__grand"><dt>TOTAL</dt><dd id="t-total"><span id="t-total-usd">$0.00</span><span class="totals__crypto" id="t-crypto" hidden></span></dd></div>
       </dl>
+
+      <div class="cashback-notice" id="cashback-notice">
+        ⚡ KEN CASHBACK ACTIVE: EARN 10% BACK IN KEN TOKENS STRAIGHT TO YOUR WALLET!
+      </div>
 
       <form class="order-form" id="order-form" novalidate>
         <label class="order-form__label" for="email">EMAIL FOR DELIVERY</label>
@@ -142,6 +163,22 @@
       </div>
 
       <p class="payscreen__note">Send the exact amount to the secure Solana address above (<code>2P2m2u46hg7a7eK6YSjtogSv4QnExEdfsjAKkGz719aX</code>). NOWPayments verifies your payment on the Solana blockchain and your untagged files unlock here &amp; by email automatically. <strong>Important: Send via Solana (SOL, USDC, or USDT on Solana) only. Sending via other networks will result in lost funds.</strong></p>
+    </div>
+  </div>
+
+  <div class="payscreen" id="wallet-modal" hidden role="dialog" aria-modal="true" aria-label="Connect Solana Wallet">
+    <div class="payscreen__card" id="wallet-modal-card">
+      <button class="payscreen__close" id="wallet-modal-close" aria-label="Close">&times;</button>
+      <span class="payscreen__kicker">VIP ACCESS &mdash; WALLET CONNECTION</span>
+      <h2 class="payscreen__title" id="wallet-modal-title">CONNECT SOLANA WALLET</h2>
+      <p class="payscreen__note" id="wallet-modal-desc" style="margin-bottom: 6px;">Connect your wallet to verify KEN holdings and unlock your 15% discount &amp; automated cashback.</p>
+      <p class="wallet-modal__sub" id="wallet-modal-sub" style="font-size: 10px; font-weight: 700; color: #888888; letter-spacing: 0.08em; margin-bottom: 18px;">Fast, secure, and non-custodial.</p>
+
+      <div id="wallet-select-list" style="display: flex; flex-direction: column; gap: 10px;">
+        <button class="btn btn--solid" id="connect-wallet-action" type="button" style="width: 100%; padding: 14px; font-size: 11px;">CONNECT SOLANA WALLET</button>
+      </div>
+
+      <div id="wallet-inline-state" hidden style="margin-top: 14px;"></div>
     </div>
   </div>
 
