@@ -1515,19 +1515,15 @@ async function connectSolanaWallet(e) {
     e.stopPropagation();
   }
 
-  const hasPhantomDesktop = window.solana && window.solana.isPhantom;
-  const provider = hasPhantomDesktop ? window.solana : (window.solana || window.solflare || window.phantom?.solana || window.backpack || window.coinbaseSolana || window.glow);
+  const provider = window.solana || window.solflare || window.phantom?.solana || window.backpack || window.coinbaseSolana || window.glow;
   const actionBtn = $("connect-wallet-action");
 
-  if (!provider && !hasPhantomDesktop) {
-    const currentUrl = window.location.href;
-    const phantomDeepLink = `https://phantom.app/ul/browse/${encodeURIComponent(currentUrl)}?ref=${encodeURIComponent(currentUrl)}`;
+  if (!provider) {
     if (walletInlineState) {
       walletInlineState.innerHTML = `
         <div style="border: 1px solid #333; padding: 16px; background: #0d0d0d; color: #fff; text-align: center; font-size: 11px; line-height: 1.6;">
-          <p style="margin-bottom: 10px; font-weight: 700; color: #fff; letter-spacing: 0.08em;">NO SOLANA WALLET EXTENSION DETECTED</p>
-          <p style="margin-bottom: 14px; color: #888888; font-size: 10px;">Please open this site inside the Phantom app browser or install a Solana wallet extension.</p>
-          <a href="${phantomDeepLink}" target="_blank" rel="noopener noreferrer" class="payscreen__dl" style="display: block; text-decoration: none; background: #fff; color: #000; border-color: #fff; padding: 12px; font-weight: 800; font-size: 11px; text-transform: uppercase;">OPEN IN PHANTOM APP &rarr;</a>
+          <p style="margin-bottom: 8px; font-weight: 700; color: #fff; letter-spacing: 0.08em;">SOLANA PROVIDER NOT FOUND</p>
+          <p style="color: #888888; font-size: 10px;">Please ensure a Solana wallet extension is active in your browser.</p>
         </div>
       `;
       walletInlineState.hidden = false;
@@ -1548,11 +1544,10 @@ async function connectSolanaWallet(e) {
   const btnText = $("wallet-btn-text");
 
   try {
-    const activeProvider = (window.solana && window.solana.isPhantom) ? window.solana : provider;
-    const res = await activeProvider.connect();
-    const pubKey = (res && res.publicKey) ? res.publicKey.toString() : (activeProvider.publicKey ? activeProvider.publicKey.toString() : null);
+    const res = await provider.connect();
+    const pubKey = (res && res.publicKey) ? res.publicKey.toString() : (provider.publicKey ? provider.publicKey.toString() : null);
     if (!pubKey) {
-      throw new Error("Failed to retrieve public key from provider.");
+      throw new Error("Failed to extract public key from connected wallet.");
     }
     connectedWalletAddress = pubKey;
 
@@ -1569,16 +1564,17 @@ async function connectSolanaWallet(e) {
 
     if (verification && verification.holder) {
       isKenHolder = true;
-      btnText.textContent = `KEN HOLDER ✓ (${verification.balance.toLocaleString()} KEN)`;
-      $("wallet-btn").classList.add("wallet-btn--holder");
+      if (btnText) btnText.textContent = `KEN HOLDER ✓ (${verification.balance.toLocaleString()} KEN)`;
+      const walletBtnEl = $("wallet-btn");
+      if (walletBtnEl) walletBtnEl.classList.add("wallet-btn--holder");
 
       if (walletModalTitle) walletModalTitle.textContent = "VERIFIED HOLDER";
       if (walletModalDesc) walletModalDesc.textContent = "KEN token balance confirmed on-chain.";
       if (walletInlineState) {
         walletInlineState.innerHTML = `
-          <div style="text-align: center; padding: 10px;">
-            <div style="font-size: 28px; font-weight: 700; color: #fff; margin: 10px auto;">✓</div>
-            <p style="margin-top: 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: #fff;">15% DISCOUNT &amp; VIP PERKS UNLOCKED</p>
+          <div style="text-align: center; padding: 12px;">
+            <div style="font-size: 32px; font-weight: 700; color: #fff; margin: 6px auto 8px auto;">✓</div>
+            <p style="margin-top: 4px; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; color: #fff;">15% DISCOUNT &amp; VIP PERKS UNLOCKED</p>
           </div>
         `;
         walletInlineState.hidden = false;
@@ -1589,7 +1585,7 @@ async function connectSolanaWallet(e) {
       }, 1200);
     } else {
       isKenHolder = false;
-      btnText.textContent = `${pubKey.slice(0, 4)}…${pubKey.slice(-4)} (CONNECTED)`;
+      if (btnText) btnText.textContent = `${pubKey.slice(0, 4)}…${pubKey.slice(-4)} (CONNECTED)`;
 
       if (walletModalTitle) walletModalTitle.textContent = "KEN TOKEN REQUIRED";
       if (walletModalDesc) walletModalDesc.textContent = "Wallet connected successfully, but no KEN tokens were detected.";
@@ -1597,8 +1593,7 @@ async function connectSolanaWallet(e) {
         walletInlineState.innerHTML = `
           <div style="border: 1px solid #333; padding: 16px; background: #0d0d0d; color: #fff; text-align: center;">
             <p style="margin-bottom: 8px; font-weight: 700; font-size: 11px; letter-spacing: 0.08em;">ACQUIRE KEN TO UNLOCK VIP PERKS</p>
-            <p style="margin-bottom: 14px; color: #888888; font-size: 10px; line-height: 1.5;">Hold KEN to activate your 15% lease discount, automated cashback, and Season 2 early access.</p>
-            <a href="https://raydium.io/swap/?inputMint=sol&outputMint=HEFkC6WQo3jTv39B6JhYQJ3ZW8xKxRELaWdnirdSpump" target="_blank" rel="noopener noreferrer" class="payscreen__dl" style="display: block; text-decoration: none; background: #fff; color: #000; border-color: #fff; padding: 12px; font-weight: 800; font-size: 11px;">SWAP FOR KEN ON RAYDIUM &rarr;</a>
+            <p style="margin-bottom: 12px; color: #888888; font-size: 10px; line-height: 1.5;">Hold KEN to activate your 15% lease discount, automated cashback, and Season 2 early access.</p>
           </div>
         `;
         walletInlineState.hidden = false;
@@ -1620,7 +1615,7 @@ async function connectSolanaWallet(e) {
       walletInlineState.hidden = false;
     }
     if (actionBtn) actionBtn.hidden = false;
-    btnText.textContent = "CONNECT WALLET (KEN)";
+    if (btnText) btnText.textContent = "CONNECT WALLET (KEN)";
   }
 }
 
