@@ -1594,7 +1594,7 @@ async function connectSolanaWallet(e) {
           <div style="border: 1px solid #333; padding: 16px; background: #0d0d0d; color: #fff; text-align: center;">
             <p style="margin-bottom: 8px; font-weight: 700; font-size: 11px; letter-spacing: 0.08em;">ACQUIRE KEN TO UNLOCK VIP PERKS</p>
             <p style="margin-bottom: 14px; color: #888888; font-size: 10px; line-height: 1.5;">Hold KEN to activate your 15% lease discount, automated cashback, and Season 2 early access.</p>
-            <a href="https://raydium.io/swap/?inputMint=sol&outputMint=HEFkC6WQo3jTv39B6JhYQJ3ZW8xKxRELaWdnirdSpump" target="_blank" rel="noopener noreferrer" class="payscreen__dl" style="display: block; text-decoration: none; background: #fff; color: #000; border-color: #fff; padding: 12px; font-weight: 800; font-size: 11px; text-transform: uppercase;">BUY KEN ON RAYDIUM &rarr;</a>
+            <a href="https://pump.fun/coin/HEFkC6WQo3jTv39B6JhYQJ3ZW8xKxRELaWdnirdSpump" target="_blank" rel="noopener noreferrer" class="payscreen__dl" style="display: block; text-decoration: none; background: #fff; color: #000; border-color: #fff; padding: 12px; font-weight: 800; font-size: 11px; text-transform: uppercase;">BUY KEN ON PUMP.FUN &rarr;</a>
           </div>
         `;
         walletInlineState.hidden = false;
