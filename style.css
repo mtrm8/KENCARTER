@@ -1670,11 +1670,11 @@ button {
 
 .ken-benefits__kicker {
   display: block;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.35em;
-  color: var(--gray);
-  margin: 0 auto 8px auto;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.3em;
+  color: var(--black);
+  margin: 15px auto 12px auto;
   text-align: center;
 }
 
