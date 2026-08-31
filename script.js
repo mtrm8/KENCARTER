@@ -1493,14 +1493,49 @@ function openWalletModal() {
   if (walletModalTitle) walletModalTitle.textContent = "CONNECT SOLANA WALLET";
   if (walletModalDesc) walletModalDesc.textContent = "Connect your wallet to verify KEN holdings and unlock your 15% discount & automated cashback.";
   if (walletModalSub) walletModalSub.hidden = false;
-  const actionBtn = $("connect-wallet-action");
-  if (actionBtn) actionBtn.hidden = false;
+  if (walletSelectList) {
+    const currentUrl = window.location.href;
+    const encodedUrl = encodeURIComponent(currentUrl);
+    const phantomDeepLink = `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedUrl}`;
+    const solflareDeepLink = `https://solflare.com/ul/v1/browse/${encodedUrl}`;
+
+    walletSelectList.innerHTML = `
+      <button class="btn btn--solid" id="connect-wallet-action" type="button" style="width: 100%; padding: 14px; font-size: 11px; margin-bottom: 8px;">CONNECT BROWSER EXTENSION</button>
+      <a href="${phantomDeepLink}" target="_blank" rel="noopener noreferrer" class="payscreen__dl" style="display: block; text-decoration: none; text-align: center; background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 12px; font-weight: 800; font-size: 11px; text-transform: uppercase; margin-bottom: 8px;">CONNECT PHANTOM (MOBILE) &rarr;</a>
+      <a href="${solflareDeepLink}" target="_blank" rel="noopener noreferrer" class="payscreen__dl" style="display: block; text-decoration: none; text-align: center; background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 12px; font-weight: 800; font-size: 11px; text-transform: uppercase; margin-bottom: 8px;">CONNECT SOLFLARE (MOBILE) &rarr;</a>
+      <button class="payscreen__dl" id="connect-walletconnect" type="button" style="width: 100%; background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 12px; font-weight: 800; font-size: 11px; text-transform: uppercase;">WALLETCONNECT / UNIVERSAL &rarr;</button>
+    `;
+    const actionBtn = $("connect-wallet-action");
+    if (actionBtn) {
+      actionBtn.addEventListener("click", connectSolanaWallet);
+    }
+    const wcBtn = $("connect-walletconnect");
+    if (wcBtn) {
+      wcBtn.addEventListener("click", connectWalletConnect);
+    }
+  }
   if (walletInlineState) {
     walletInlineState.hidden = true;
     walletInlineState.innerHTML = "";
   }
   walletModal.hidden = false;
   document.body.style.overflow = "hidden";
+}
+
+function connectWalletConnect() {
+  if (walletModalSub) walletModalSub.hidden = true;
+  if (walletModalTitle) walletModalTitle.textContent = "WALLETCONNECT";
+  if (walletModalDesc) walletModalDesc.textContent = "Initializing secure WalletConnect session for Solana…";
+  if (walletInlineState) {
+    walletInlineState.innerHTML = `
+      <div style="border: 1px solid #333; padding: 16px; background: #0d0d0d; color: #fff; text-align: center; font-size: 11px; line-height: 1.6;">
+        <p style="margin-bottom: 10px; font-weight: 700; color: #fff;">UNIVERSAL WALLETCONNECT</p>
+        <p style="margin-bottom: 14px; color: #888888; font-size: 10px;">Please use Phantom or Solflare mobile app browser or extension for instant on-chain verification.</p>
+        <button type="button" class="payscreen__dl" onclick="openWalletModal()" style="background: #fff; color: #000; border-color: #fff; padding: 8px 14px; font-weight: 800; cursor: pointer; text-transform: uppercase;">BACK TO OPTIONS</button>
+      </div>
+    `;
+    walletInlineState.hidden = false;
+  }
 }
 
 function closeWalletModal() {
