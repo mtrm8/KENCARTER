@@ -83,7 +83,7 @@ function seasonBadge(s) {
   return `UPCOMING \u00b7 ${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
 }
 
-const TICKER_TEXT = "KEN CARTER \u2014 SEASON 01 IS LIVE \u2014 STRICTLY LIMITED LEASES \u2014 ALL BEATS $14.95 \u2014 PICK 2, GET 1 FREE \u2014 ";
+const TICKER_TEXT = "KEN CARTER \u2014 SEASON 02 IS LIVE NOW \u2014 STRICTLY LIMITED LEASES \u2014 ALL BEATS $14.95 \u2014 PICK 2, GET 1 FREE \u2014 ";
 
 let storeTimer     = null;
 
@@ -141,7 +141,7 @@ function tickSeason(now = Date.now()) {
       timerEl.textContent = remaining <= 0 ? "EXPIRED" : formatRemaining(remaining);
     } else {
       setKicker("SEASON 02 IS LIVE");
-      if (statusEl) statusEl.textContent = "SEASON 02 CATALOG IS ACTIVE WITH SCHEDULED DROP DATES.";
+      if (statusEl) statusEl.textContent = "SEASON 02 IS LIVE \u2014 NEW BEAT DROPS WEEKLY. AVAILABLE NOW.";
       timerEl.textContent = "LIVE NOW";
     }
     return;
