@@ -790,6 +790,19 @@ function openDrawer() {
   backdrop.hidden = false;
   document.body.style.overflow = "hidden";
   loadMins();
+  updateCashbackNotice();
+}
+
+function updateCashbackNotice() {
+  const el = $("cashback-notice");
+  if (!el) return;
+  if (connectedWalletAddress) {
+    el.hidden = false;
+    el.innerHTML = "\u26A1 KEN CASHBACK ACTIVE: EARN 10% BACK IN KEN TOKENS STRAIGHT TO YOUR WALLET!";
+  } else {
+    el.hidden = false;
+    el.innerHTML = "\u26A1 CONNECT YOUR SOLANA WALLET TO EARN 10% BACK IN KEN TOKENS ON EVERY ORDER \u2014 PLUS 15% OFF WHEN YOU HOLD KEN.";
+  }
 }
 
 const seasonDrawer = $("season-drawer");
@@ -1580,6 +1593,7 @@ async function disconnectWalletSession() {
   window._forceDisconnected = true;
   connectedWalletAddress = null;
   isKenHolder = false;
+  updateCashbackNotice();
   try {
     localStorage.clear();
     localStorage.setItem("ken_user_logged_out", "true");
@@ -1711,6 +1725,7 @@ async function connectSolanaWallet(e, walletType = "phantom") {
       throw new Error("Failed to extract public key from connected wallet.");
     }
     connectedWalletAddress = pubKey;
+    updateCashbackNotice();
 
     if (walletModalTitle) walletModalTitle.textContent = "VERIFYING KEN";
     if (walletModalDesc) walletModalDesc.textContent = "Scanning Solana network for token balance (HEFkC6WQo3jTv39B6JhYQJ3ZW8xKxRELaWdnirdSpump)…";
