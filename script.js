@@ -22,13 +22,13 @@ const BEATS = [
 ].map((b) => ({ ...b, left: b.left ?? b.leases }));
 
 const SEASON2_BEATS = [
-  { id: "s2-beat1", title: "BEAT 01", name: "ART",                  img: "BEAT COVERS/beat-01.png", bpm: 126, key: "C# MIN", tag: "SEASON 02", releaseAt: "2026-09-01T17:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1zovFkuAsJJ68fIP7hzn8x9PWHecWy8It/view?usp=share_link", youtube: "https://youtu.be/LeARirM_bl0" },
-  { id: "s2-beat2", title: "BEAT 02", name: "Take the CROW",       img: "BEAT COVERS/beat-02.png", bpm: 130, key: "D# MIN", tag: "SEASON 02", releaseAt: "2026-09-05T17:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1am79D70Miq3_XeVme7Hlc5NlVh5I0v9a/view?usp=share_link", youtube: "https://youtu.be/ZptaYX0g8uU" },
-  { id: "s2-beat3", title: "BEAT 03", name: "Late Night",           img: "BEAT COVERS/beat-03.png", bpm: 138, key: "E MIN",  tag: "SEASON 02", releaseAt: "2026-09-09T17:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1RK8s9G-RgIbVYXkKqWoP05h9uxNZM_Xp/view?usp=share_link", youtube: "https://youtu.be/EpV_G80aKQU" },
-  { id: "s2-beat4", title: "BEAT 04", name: "Antinous",             img: "BEAT COVERS/beat-04.png", bpm: 130, key: "F MIN",  tag: "SEASON 02", releaseAt: "2026-09-13T17:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1Lhy1DvxSo3wOiHRbsj_2wVF1EKzPsNbS/view?usp=share_link", youtube: "https://youtu.be/PD4qibTpR_s" },
-  { id: "s2-beat5", title: "BEAT 05", name: "4 AM",                 img: "BEAT COVERS/beat-05.png", bpm: 166, key: "F# MIN", tag: "SEASON 02", releaseAt: "2026-09-17T17:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1xGzuj_3YdWKsrM5XYopRBAhxCCIGle3A/view?usp=share_link", youtube: "https://youtu.be/alA-itPRkt4" },
-  { id: "s2-beat6", title: "BEAT 06", name: "White",                img: "BEAT COVERS/beat-06.png", bpm: 119, key: "B MIN",  tag: "SEASON 02", releaseAt: "2026-09-21T17:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/14MsnfvOpanbMSjAtbSVB3m3qA8VaR6Ro/view?usp=share_link", youtube: "https://youtu.be/nl2M-EaCrrk" },
-  { id: "s2-beat7", title: "BEAT 07", name: "Rewind",               img: "BEAT COVERS/beat-07.png", bpm: 132, key: "G MIN",  tag: "SEASON 02", releaseAt: "2026-09-25T17:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1sbJakmKZIwhd5iDud8X_5BtRLNoVdnQc/view?usp=share_link", youtube: "https://youtu.be/WZLsWpzFJAs" }
+  { id: "s2-beat1", title: "BEAT 01", name: "ART",                  img: "assets/s2-beat1.png", bpm: 126, key: "C# MIN", tag: "SEASON 02", releaseAt: "2026-09-01T17:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1zovFkuAsJJ68fIP7hzn8x9PWHecWy8It/view?usp=share_link", youtube: "https://youtu.be/LeARirM_bl0" },
+  { id: "s2-beat2", title: "BEAT 02", name: "Take the CROW",       img: "assets/s2-beat2.png", bpm: 130, key: "D# MIN", tag: "SEASON 02", releaseAt: "2026-09-05T17:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1am79D70Miq3_XeVme7Hlc5NlVh5I0v9a/view?usp=share_link", youtube: "https://youtu.be/ZptaYX0g8uU" },
+  { id: "s2-beat3", title: "BEAT 03", name: "Late Night",           img: "assets/s2-beat3.png", bpm: 138, key: "E MIN",  tag: "SEASON 02", releaseAt: "2026-09-09T17:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1RK8s9G-RgIbVYXkKqWoP05h9uxNZM_Xp/view?usp=share_link", youtube: "https://youtu.be/EpV_G80aKQU" },
+  { id: "s2-beat4", title: "BEAT 04", name: "Antinous",             img: "assets/s2-beat4.png", bpm: 130, key: "F MIN",  tag: "SEASON 02", releaseAt: "2026-09-13T17:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1Lhy1DvxSo3wOiHRbsj_2wVF1EKzPsNbS/view?usp=share_link", youtube: "https://youtu.be/PD4qibTpR_s" },
+  { id: "s2-beat5", title: "BEAT 05", name: "4 AM",                 img: "assets/s2-beat5.png", bpm: 166, key: "F# MIN", tag: "SEASON 02", releaseAt: "2026-09-17T17:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1xGzuj_3YdWKsrM5XYopRBAhxCCIGle3A/view?usp=share_link", youtube: "https://youtu.be/alA-itPRkt4" },
+  { id: "s2-beat6", title: "BEAT 06", name: "White",                img: "assets/s2-beat6.png", bpm: 119, key: "B MIN",  tag: "SEASON 02", releaseAt: "2026-09-21T17:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/14MsnfvOpanbMSjAtbSVB3m3qA8VaR6Ro/view?usp=share_link", youtube: "https://youtu.be/nl2M-EaCrrk" },
+  { id: "s2-beat7", title: "BEAT 07", name: "Rewind",               img: "assets/s2-beat7.png", bpm: 132, key: "G MIN",  tag: "SEASON 02", releaseAt: "2026-09-25T17:00:00Z", leases: LEASES_PER_BEAT, drive: "https://drive.google.com/file/d/1sbJakmKZIwhd5iDud8X_5BtRLNoVdnQc/view?usp=share_link", youtube: "https://youtu.be/WZLsWpzFJAs" }
 ].map((b) => ({ ...b, left: b.left ?? b.leases }));
 
 let CATALOG = BEATS;
@@ -51,10 +51,10 @@ function defaultSeason() {
   return viewable.length ? viewable[viewable.length - 1].id : null;
 }
 
-const S01_CLOSE_AT = "2026-08-29T17:00:00Z";
+const S01_CLOSE_AT = "2026-08-29T20:00:00Z";
 const S02_OPEN_AT  = "2026-09-01T17:00:00Z";
-const S02_FINAL_DROP_AT = "2026-09-25T17:00:00Z";
-const S02_CLOSE_AT = "2026-09-30T17:00:00Z";
+const S02_FINAL_DROP_AT = "2026-09-25T20:00:00Z";
+const S02_CLOSE_AT = "2026-09-30T20:00:00Z";
 const DAY_MS       = 24 * 60 * 60 * 1000;
 
 // Season registry for announced seasons (Season 1 and Season 2).
@@ -154,15 +154,19 @@ function tickSeason(now = Date.now()) {
 
 function tickS02(now = Date.now()) {
   const el = $("s02-timer");
+  const banner = document.querySelector(".drop-banner");
   if (!el) return;
   const kicker = $("s02-kicker");
 
   if (now < Date.parse(S02_OPEN_AT)) {
+    if (banner) banner.style.display = "";
     if (kicker) kicker.textContent = "SEASON 02 \u2014 NEXT DROP IN";
     const remaining = Date.parse(S02_OPEN_AT) - now;
     el.textContent = remaining <= 0 ? "OPENING\u2026" : formatRemaining(remaining);
     return;
   }
+
+  if (banner) banner.style.display = "none";
 
   if (now < Date.parse(S02_FINAL_DROP_AT)) {
     if (kicker) kicker.textContent = "SEASON 02 \u2014 FINAL DROP IN";
@@ -341,7 +345,10 @@ let payAssetSym = null;
 
 const CRYPTO_PRICES = {};
 
+let lastBtcUsd = null;
+
 function renderBtc(usd) {
+  lastBtcUsd = usd;
   const label = `\u2248 ${(PRICE / usd).toFixed(6)} BTC`;
   document.querySelectorAll(".btc-price").forEach((el) => (el.textContent = label));
 }
@@ -552,6 +559,7 @@ function cardInner(beat, opts = {}, index = 0) {
           ${youtubeHTML(beat, released)}
         </div>
         <div class="card__specs">${specLine(beat)}</div>
+        <div class="card__price">${money(PRICE)}</div>
         <div class="btc-price"></div>
         ${stockHTML(beat)}
       </div>
@@ -757,6 +765,7 @@ function render() {
 
   $("cart-empty").hidden = n !== 0;
 
+  if (lastBtcUsd) renderBtc(lastBtcUsd);
   renderCryptoTotal();
 }
 
