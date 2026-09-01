@@ -163,16 +163,17 @@ function tickS02(now = Date.now()) {
     return;
   }
 
+  if (now < Date.parse(S02_FINAL_DROP_AT)) {
+    if (kicker) kicker.textContent = "SEASON 02 \u2014 FINAL DROP IN";
+    const remaining = Date.parse(S02_FINAL_DROP_AT) - now;
+    el.textContent = remaining <= 0 ? "FINAL DROP READY" : formatRemaining(remaining);
+    return;
+  }
+
   if (now < Date.parse(S02_CLOSE_AT)) {
-    const afterFinalDrop = now >= Date.parse(S02_FINAL_DROP_AT);
-    if (afterFinalDrop) {
-      if (kicker) kicker.textContent = "SEASON 02 \u2014 CLOSES IN";
-      const remaining = Date.parse(S02_CLOSE_AT) - now;
-      el.textContent = remaining <= 0 ? "EXPIRED" : formatRemaining(remaining);
-    } else {
-      if (kicker) kicker.textContent = "SEASON 02 \u2014 IS LIVE";
-      el.textContent = "LIVE NOW";
-    }
+    if (kicker) kicker.textContent = "SEASON 02 \u2014 CLOSES IN";
+    const remaining = Date.parse(S02_CLOSE_AT) - now;
+    el.textContent = remaining <= 0 ? "EXPIRED" : formatRemaining(remaining);
     return;
   }
 
