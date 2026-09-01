@@ -54,7 +54,7 @@ function defaultSeason() {
 // Season registry for announced seasons (Season 1 and Season 2).
 const SEASONS = [
   { id: "S01", label: "SEASON 1", closeAt: "2026-08-29T20:00:00Z" },
-  { id: "S02", label: "SEASON 2", launchAt: "2026-09-01T00:00:00Z", closeAt: "2026-09-30T20:00:00Z" }
+  { id: "S02", label: "SEASON 2", launchAt: S02_OPEN_AT, closeAt: "2026-09-30T20:00:00Z" }
 ];
 
 function seasonLaunchAt(s) {
