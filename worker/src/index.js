@@ -478,10 +478,10 @@ async function handleCheckout(request, env) {
     ? order_id
     : "KC-" + Date.now().toString(36).toUpperCase() + "-" + Math.random().toString(36).slice(2, 6).toUpperCase();
 
-  let finalTotal = total;
-  if (coinSym === "KEN") {
-    finalTotal = Math.max(0, total * 0.85);
-  }
+  // The client computes the final total (including any verified KEN holder
+  // discount). Trust that value instead of re-deriving a discount here, so
+  // non-holders are never discounted.
+  const finalTotal = total;
 
   const payment = await np(env, "/payment", "POST", {
     price_amount: finalTotal,

@@ -670,8 +670,8 @@ function totals() {
   const freeCount = [...freePicks].filter((id) => selected.has(id)).length;
   const discount = freeCount * PRICE;
   let total = Math.max(0, subtotal - discount);
-  if (payAssetSym === "KEN") {
-    total = Math.max(0, total * 0.85); // 15% discount modifier for $KEN payments
+  if (payAssetSym === "KEN" && isKenHolder) {
+    total = Math.max(0, total * 0.85); // 15% discount only for verified KEN token holders
   }
   return { n, exclusiveN: exclusiveCount, basicCount, exclusiveCount, subtotal, freeCount, discount, total };
 }
