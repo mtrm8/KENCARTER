@@ -51,10 +51,16 @@ function defaultSeason() {
   return viewable.length ? viewable[viewable.length - 1].id : null;
 }
 
+const S01_CLOSE_AT = "2026-08-29T20:00:00Z";
+const S02_OPEN_AT  = "2026-09-01T20:00:00Z";
+const S02_FINAL_DROP_AT = "2026-09-25T20:00:00Z";
+const S02_CLOSE_AT = "2026-09-30T20:00:00Z";
+const DAY_MS       = 24 * 60 * 60 * 1000;
+
 // Season registry for announced seasons (Season 1 and Season 2).
 const SEASONS = [
-  { id: "S01", label: "SEASON 1", closeAt: "2026-08-29T20:00:00Z" },
-  { id: "S02", label: "SEASON 2", launchAt: S02_OPEN_AT, closeAt: "2026-09-30T20:00:00Z" }
+  { id: "S01", label: "SEASON 1", closeAt: S01_CLOSE_AT },
+  { id: "S02", label: "SEASON 2", launchAt: S02_OPEN_AT, closeAt: S02_CLOSE_AT }
 ];
 
 function seasonLaunchAt(s) {
@@ -79,11 +85,6 @@ function seasonBadge(s) {
 
 const TICKER_TEXT = "KEN CARTER \u2014 SEASON 01 IS LIVE \u2014 STRICTLY LIMITED LEASES \u2014 ALL BEATS $14.95 \u2014 PICK 2, GET 1 FREE \u2014 ";
 
-const S01_CLOSE_AT = "2026-08-29T20:00:00Z";
-const S02_OPEN_AT  = "2026-09-01T20:00:00Z";
-const S02_FINAL_DROP_AT = "2026-09-25T20:00:00Z";
-const S02_CLOSE_AT = "2026-09-30T20:00:00Z";
-const DAY_MS       = 24 * 60 * 60 * 1000;
 let storeTimer     = null;
 
 function s02UnlockedCount(now = Date.now()) {
@@ -109,7 +110,7 @@ function setKicker(text) {
 }
 
 function tickSeason(now = Date.now()) {
-  const timerEl = $("season-timer") || $("s02-timer");
+  const timerEl = $("season-timer");
   if (!timerEl) return;
   const statusEl = $("season-status");
   const s1 = SEASONS.find(s => s.id === "S01");
@@ -152,7 +153,7 @@ function tickSeason(now = Date.now()) {
 }
 
 function tickS02(now = Date.now()) {
-  const el = $("s02-timer") || $("season-timer");
+  const el = $("s02-timer");
   if (!el) return;
   const kicker = $("s02-kicker");
 
@@ -256,7 +257,7 @@ function toggleFreePick(id) {
   render();
 }
 
-const $ = (id) => document.getElementById(id) || document.getElementById(id === "season-timer" ? "s02-timer" : (id === "s02-timer" ? "season-timer" : id));
+const $ = (id) => document.getElementById(id);
 
 const grid = $("grid");
 const cartbar = $("cartbar");
