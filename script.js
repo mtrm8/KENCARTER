@@ -109,7 +109,7 @@ function setKicker(text) {
 }
 
 function tickSeason(now = Date.now()) {
-  const timerEl = $("season-timer");
+  const timerEl = $("season-timer") || $("s02-timer");
   if (!timerEl) return;
   const statusEl = $("season-status");
   const s1 = SEASONS.find(s => s.id === "S01");
@@ -125,7 +125,7 @@ function tickSeason(now = Date.now()) {
 
   if (now < Date.parse(S02_OPEN_AT)) {
     setKicker("SEASON 01 HAS CLOSED");
-    if (statusEl) statusEl.textContent = "SEASON 02 OPENS SEP 1, 2026 \u00b7 00:00 UTC.";
+    if (statusEl) statusEl.textContent = "SEASON 02 OPENS SEP 1, 2026 \u00b7 20:00 UTC.";
     const remaining = Date.parse(S02_OPEN_AT) - now;
     timerEl.textContent = remaining <= 0 ? "OPENING\u2026" : formatRemaining(remaining);
     return;
@@ -152,7 +152,7 @@ function tickSeason(now = Date.now()) {
 }
 
 function tickS02(now = Date.now()) {
-  const el = $("s02-timer");
+  const el = $("s02-timer") || $("season-timer");
   if (!el) return;
   const kicker = $("s02-kicker");
 
@@ -173,7 +173,7 @@ function tickS02(now = Date.now()) {
   if (now < Date.parse(S02_CLOSE_AT)) {
     if (kicker) kicker.textContent = "SEASON 02 \u2014 CLOSES IN";
     const remaining = Date.parse(S02_CLOSE_AT) - now;
-    el.textContent = remaining <= 0 ? "CLOSING" : formatRemaining(remaining);
+    el.textContent = remaining <= 0 ? "EXPIRED" : formatRemaining(remaining);
     return;
   }
 
@@ -256,7 +256,7 @@ function toggleFreePick(id) {
   render();
 }
 
-const $ = (id) => document.getElementById(id);
+const $ = (id) => document.getElementById(id) || document.getElementById(id === "season-timer" ? "s02-timer" : (id === "s02-timer" ? "season-timer" : id));
 
 const grid = $("grid");
 const cartbar = $("cartbar");
