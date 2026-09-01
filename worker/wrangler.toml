@@ -13,3 +13,7 @@ id = "8283af4c27774baea53f34f615be0410"
 # ALLOWED_ORIGIN = "https://www.kencarter.abrdns.com"
 # Only needed if the webhook URL differs from this worker's own /api/ipn:
 # IPN_CALLBACK_URL = "https://<your-worker-host>/api/ipn"
+
+# Fires beat-drop notifications shortly after each scheduled drop time.
+[triggers]
+crons = ["0 */6 * * *"]

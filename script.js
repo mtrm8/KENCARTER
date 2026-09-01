@@ -494,6 +494,20 @@ function cardInner(beat, opts = {}, index = 0) {
     const label = unlockDay
       ? `${MONTHS[unlockDay.getUTCMonth()]} ${unlockDay.getUTCDate()}`
       : "";
+    let savedEmail = "";
+    try {
+      savedEmail = localStorage.getItem("kencarter_beat_alert_" + beat.id) || "";
+    } catch (err) {}
+    const subscribed = !!savedEmail;
+    const notifyForm = subscribed
+      ? `<div class="beat-alert-subscribed-wrap">
+           <button type="button" class="beat-alert-subscribed-btn" disabled>NOTIFICATIONS ON</button>
+           <span class="beat-alert-email">${savedEmail}</span>
+         </div>`
+      : `<form class="beat-alert-form" data-beat-id="${beat.id}" data-beat-name="${beat.name || beat.title}">
+           <input type="email" class="beat-alert-input" placeholder="YOU@EMAIL.COM" required>
+           <button type="submit" class="beat-alert-btn">GET NOTIFIED</button>
+         </form>`;
     return `
       <div class="card__media">
         <img src="${beat.img}" alt="LOCKED" decoding="async" loading="lazy">
@@ -511,6 +525,7 @@ function cardInner(beat, opts = {}, index = 0) {
           <div class="card__price">$${PRICE.toFixed(2)}</div>
           <div class="btc-price"></div>
         </div>
+        ${notifyForm}
         <button class="card__btn" disabled>SOON</button>
       </div>`;
   }
@@ -1427,6 +1442,52 @@ grid.addEventListener("click", (e) => {
   const btn = e.target.closest(".card__btn");
   if (!btn || btn.disabled) return;
   toggle(btn.dataset.id, btn.dataset.type);
+});
+
+// Per-beat "GET NOTIFIED" subscription (shown on locked/upcoming beat cards).
+grid.addEventListener("submit", async (e) => {
+  const form = e.target.closest(".beat-alert-form");
+  if (!form) return;
+  e.preventDefault();
+
+  const input = form.querySelector(".beat-alert-input");
+  const beatId = form.dataset.beatId;
+  const beatName = form.dataset.beatName || beatId;
+  const email = input ? input.value.trim() : "";
+
+  if (!EMAIL_RE.test(email)) {
+    alert("Please enter a valid email address.");
+    input && input.focus();
+    return;
+  }
+
+  const btn = form.querySelector(".beat-alert-btn");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "SAVING\u2026";
+  }
+
+  try {
+    await workerRequest("/api/notify-beat", {
+      method: "POST",
+      body: JSON.stringify({ beatId, beatName, email })
+    });
+    try {
+      localStorage.setItem("kencarter_beat_alert_" + beatId, email);
+    } catch (err) {
+      console.error("Local storage error:", err);
+    }
+    buildGrid();
+    render();
+    alert("You\u2019re in! We\u2019ll email you the moment " + beatName + " drops.");
+  } catch (err) {
+    console.error("Beat-notify error:", err);
+    alert("Something went wrong. Please try again.");
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "GET NOTIFIED";
+    }
+  }
 });
 
 const brandBtn = $("brand-season-btn");

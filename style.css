@@ -1588,6 +1588,84 @@ button {
   margin-top: 6px;
 }
 
+/* Per-beat "GET NOTIFIED" (locked/upcoming beat cards) */
+.beat-alert-form {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.beat-alert-input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  font-size: 10px;
+  font-family: inherit;
+  text-transform: uppercase;
+  border: 1px solid var(--black);
+  background: var(--white);
+  color: var(--black);
+  outline: none;
+}
+
+.beat-alert-btn {
+  padding: 8px 10px;
+  font-size: 9px;
+  font-weight: 700;
+  font-family: inherit;
+  text-transform: uppercase;
+  background: var(--black);
+  color: var(--white);
+  border: 1px solid var(--black);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.beat-alert-btn:hover {
+  background: #333;
+}
+
+.beat-alert-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.beat-alert-subscribed-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 12px;
+  width: 100%;
+}
+
+.beat-alert-subscribed-btn {
+  width: 100%;
+  padding: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: inherit;
+  text-transform: uppercase;
+  background: var(--black);
+  color: var(--white);
+  border: 1px solid var(--black);
+  cursor: default;
+  letter-spacing: 0.1em;
+  text-align: center;
+  display: block;
+}
+
+.beat-alert-email {
+  display: block;
+  text-align: center;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--gray);
+  margin-top: 6px;
+  word-break: break-all;
+}
+
 .cashback-notice {
   margin: 14px 0;
   border: 1px solid var(--black);

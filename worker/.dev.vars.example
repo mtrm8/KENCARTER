@@ -3,3 +3,4 @@ NOWPAYMENTS_API_KEY=your-nowpayments-api-key
 NOWPAYMENTS_IPN_SECRET=your-ipn-secret-from-dashboard
 STATICFORMS_API_KEY=sf_your_staticforms_key
 BEAT_LINKS={"beat1":"https://drive.google.com/uc?export=download&id=FILE_ID_1","beat2":"…"}
+BEAT_DROPS={"s2-beat1":"2026-09-01T17:00:00Z","s2-beat2":"2026-09-05T17:00:00Z"}

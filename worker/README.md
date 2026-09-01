@@ -24,9 +24,21 @@ npx wrangler secret put NOWPAYMENTS_API_KEY
 npx wrangler secret put NOWPAYMENTS_IPN_SECRET
 npx wrangler secret put STATICFORMS_API_KEY
 npx wrangler secret put BEAT_LINKS          # paste JSON from step below
+npx wrangler secret put BEAT_DROPS          # paste JSON (beatId → ISO drop time)
 
 npm run deploy
 ```
+
+`BEAT_DROPS` drives the `scheduled` cron (fires every 6h): it emails each beat's
+subscribers one time, once the beat's drop time has passed.
+
+## Per-beat "notify me" endpoints
+
+- `POST /api/notify-beat` — `{ beatId, beatName, email, ... }`. Validates the
+  email, stores it (deduped) per beat in KV, and sends a confirmation email.
+- `POST /api/notify-drop` — `{ beatId, beatName }`. Emails all subscribers of
+  that beat that it's now live. Sends at most once per beat (tracked in KV).
+  The cron calls this automatically for every scheduled drop.
 
 ## BEAT_LINKS value (paste when prompted — keep out of git)
 

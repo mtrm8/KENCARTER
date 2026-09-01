@@ -14,12 +14,15 @@
  *   GET  /api/status?order_id=…   live payment status (+ links ONLY if released)
  *   POST /api/ipn                 NOWPayments webhook — HMAC-SHA512 verified;
  *                                 releases links + emails them on 'finished'
+ *   POST /api/notify-beat         per-beat "notify me when it drops" signup
+ *   POST /api/notify-drop         email a beat's subscribers that it is now live
  *
  * Secrets (wrangler secret put …):
  *   NOWPAYMENTS_API_KEY     payments API key
  *   NOWPAYMENTS_IPN_SECRET  IPN signing secret (dashboard → IPN settings)
  *   STATICFORMS_API_KEY     form backend used to email delivery
  *   BEAT_LINKS              JSON: { "beat1": "https://drive…", … }
+ *   BEAT_DROPS              JSON: { "beatId": "ISO drop time", … } (cron)
  *
  * Bindings: KV namespace "ORDERS" (see wrangler.toml).
  */
@@ -58,6 +61,8 @@ const json = (env, obj, status = 200) =>
 
 const orderKey = (id) => "order:" + id;
 const ttl = () => ({ expirationTtl: 60 * 60 * 24 * 7 });
+const notifyKey = (beatId) => "notify-sub:" + beatId;      // subscribed emails per beat
+const notifiedKey = (beatId) => "notify-sent:" + beatId;   // drop notifications already sent
 
 function beatLinks(env) {
   try {
@@ -540,6 +545,133 @@ async function handleNotifyClosure(request, env) {
   return json(env, { ok: true });
 }
 
+// Per-beat "notify me when it drops" signups. Stores the email (deduped) under
+// notify-sub:<beatId> and emails a confirmation. Nothing order-related here.
+async function handleNotifyBeat(request, env) {
+  const body = await request.json().catch(() => null);
+  const { beatId, beatName, email, dropDate, dropLabel } = body || {};
+
+  if (!beatId) return json(env, { error: "MISSING BEAT" }, 400);
+  if (!email || !EMAIL_RE.test(email)) return json(env, { error: "INVALID EMAIL" }, 400);
+
+  try {
+    // Dedupe subscriptions per beat (a user may watch several beats).
+    const existing = (await env.ORDERS.get(notifyKey(beatId))) || "[]";
+    let emails = [];
+    try {
+      emails = JSON.parse(existing);
+    } catch {
+      emails = [];
+    }
+    const lower = String(email).trim().toLowerCase();
+    let added = false;
+    if (!emails.some((e) => String(e).toLowerCase() === lower)) {
+      emails.push(String(email).trim());
+      added = true;
+      // Persist for ~3 months (covers the whole season's drop window).
+      await env.ORDERS.put(notifyKey(beatId), JSON.stringify(emails), { expirationTtl: 60 * 60 * 24 * 90 });
+    }
+
+    const payload = {
+      apiKey: env.STATICFORMS_API_KEY,
+      email: String(email).trim(),
+      message: `BEAT DROP NOTIFICATION SIGNUP — ${beatName || beatId}`,
+      Beat: beatName || beatId,
+      BeatId: beatId,
+      DropDate: dropDate || (dropLabel ? new Date(dropLabel).toUTCString() : ""),
+      Status: "SUBSCRIBED — WE'LL EMAIL YOU THE MOMENT THIS BEAT DROPS",
+      Date: new Date().toUTCString()
+    };
+    await fetch(STATICFORMS_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    return json(env, { ok: true, subscribed: true, beatId, added, count: emails.length });
+  } catch (err) {
+    console.error("Beat-notify signup error:", err);
+    return json(env, { error: "SIGNUP FAILED" }, 500);
+  }
+}
+
+// Emails every subscriber of a beat that it is now available, exactly once per
+// beat (tracked by notify-sent:<beatId>). Can be invoked directly (POST
+// /api/notify-drop) or via the scheduled cron when a scheduled drop goes live.
+async function handleNotifyDrop(request, env) {
+  const body = await request.json().catch(() => null);
+  const beatId = body && body.beatId;
+  if (!beatId) return json(env, { error: "MISSING BEAT" }, 400);
+
+  const subsRaw = (await env.ORDERS.get(notifyKey(beatId))) || "[]";
+  let emails = [];
+  try {
+    emails = JSON.parse(subsRaw);
+  } catch {
+    emails = [];
+  }
+  if (!emails.length) return json(env, { ok: true, beatId, notified: 0 });
+
+  // Only send once per beat drop.
+  const alreadyNotified = (await env.ORDERS.get(notifiedKey(beatId))) === "1";
+  if (alreadyNotified) return json(env, { ok: true, beatId, notified: 0, already: true });
+
+  const beatName = body && (body.beatName || beatId);
+  let sent = 0;
+  for (const email of emails) {
+    try {
+      const payload = {
+        apiKey: env.STATICFORMS_API_KEY,
+        email,
+        message: `${beatName || beatId} IS NOW AVAILABLE — GRAB IT BEFORE THE LEASES SELL OUT`,
+        Beat: beatName || beatId,
+        BeatId: beatId,
+        Status: "BEAT IS LIVE — LEASE NOW (pick 2, get 1 free)",
+        Date: new Date().toUTCString()
+      };
+      await fetch(STATICFORMS_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload)
+      });
+      sent++;
+    } catch (err) {
+      console.error("Beat-drop notify failed for", email, err.message);
+    }
+  }
+
+  if (sent > 0) {
+    await env.ORDERS.put(notifiedKey(beatId), "1", { expirationTtl: 60 * 60 * 24 * 90 });
+  }
+  return json(env, { ok: true, beatId, notified: sent });
+}
+
+// Read the configured release schedule (beatId → ISO timestamp) and notify
+// subscribers of any beat whose drop time has now passed but was never sent.
+function beatDrops(env) {
+  try {
+    return JSON.parse(env.BEAT_DROPS || "{}");
+  } catch {
+    return {};
+  }
+}
+
+async function notifyDueDrops(env) {
+  const now = Date.now();
+  const drops = beatDrops(env);
+  for (const [beatId, iso] of Object.entries(drops)) {
+    const when = Date.parse(iso);
+    if (!when || now < when) continue;
+    const sent = (await env.ORDERS.get(notifiedKey(beatId))) === "1";
+    if (sent) continue;
+    try {
+      await handleNotifyDrop({ json: async () => ({ beatId, beatName: beatId }) }, env);
+    } catch (err) {
+      console.error("Scheduled drop notify failed:", beatId, err.message);
+    }
+  }
+}
+
 async function handleStatus(url, env) {
   const id = url.searchParams.get("order_id");
   const raw = id && (await env.ORDERS.get(orderKey(id)));
@@ -648,6 +780,8 @@ export default {
       if (request.method === "POST" && url.pathname === "/api/checkout") return await handleCheckout(request, env);
       if (request.method === "POST" && url.pathname === "/api/verify-ken") return await handleVerifyKen(request, env);
       if (request.method === "POST" && url.pathname === "/api/notify-closure") return await handleNotifyClosure(request, env);
+      if (request.method === "POST" && url.pathname === "/api/notify-beat") return await handleNotifyBeat(request, env);
+      if (request.method === "POST" && url.pathname === "/api/notify-drop") return await handleNotifyDrop(request, env);
       if (request.method === "GET" && url.pathname === "/api/status") return await handleStatus(url, env);
       if (request.method === "GET" && url.pathname === "/api/mins") return await handleMins(url, env);
       if (request.method === "POST" && url.pathname === "/api/ipn") return await handleIpn(request, env, ctx);
@@ -663,5 +797,10 @@ export default {
       const status = err.status >= 400 && err.status < 600 ? err.status : 500;
       return json(env, { error: err.message || "SERVER ERROR" }, status);
     }
+  },
+
+  // Cron: fire beat-drop notifications once their scheduled time passes.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(notifyDueDrops(env).catch((err) => console.error("SCHEDULED NOTIFY ERROR:", err)));
   }
 };

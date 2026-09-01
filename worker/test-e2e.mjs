@@ -387,6 +387,40 @@ check(readFileSync(root + "LICENSE.txt", "utf8").includes("Prod. by Ken Carter")
 check(readFileSync(root + "EXCLUSIVE_LICENSE.txt", "utf8").includes("Full Master Rights Transfer"), "EXCLUSIVE_LICENSE.txt exists at site root with transfer clause");
 
 // ───────────────────────────────────────────────────────────────────────────
+// G. Per-beat "notify me when it drops"
+// ───────────────────────────────────────────────────────────────────────────
+INFO("G. PER-BEAT DROP NOTIFICATIONS");
+const beforeEmails = mock.emails.length;
+
+r = await api("/api/notify-beat", { method: "POST", body: { beatId: "", email: "a@b.co" } });
+check(r.res.status === 400, "/api/notify-beat rejects empty beatId");
+
+r = await api("/api/notify-beat", { method: "POST", body: { beatId: "s2-beat2", email: "bad" } });
+check(r.res.status === 400, "/api/notify-beat rejects invalid email");
+
+r = await api("/api/notify-beat", { method: "POST", body: { beatId: "s2-beat2", beatName: "Take the CROW", email: "fan@example.com" } });
+check(r.res.status === 200 && r.data.ok && r.data.subscribed && r.data.count === 1, "notify-beat stores subscription + confirms (1)");
+check(mock.emails.length === beforeEmails + 1 && /DROP NOTIFICATION/.test(mock.emails[mock.emails.length - 1].message), "notify-beat sends confirmation email");
+
+r = await api("/api/notify-beat", { method: "POST", body: { beatId: "s2-beat2", email: "FAN@example.com" } });
+check(r.data.count === 1 && r.data.added === false, "notify-beat dedupes same email (case-insensitive)");
+
+r = await api("/api/notify-beat", { method: "POST", body: { beatId: "s2-beat2", email: "other@example.com" } });
+check(r.data.count === 2 && r.data.added === true, "notify-beat appends a second distinct email");
+
+// notify-drop emails each unique subscriber once, then is idempotent.
+const emailsBeforeDrop = mock.emails.length;
+r = await api("/api/notify-drop", { method: "POST", body: { beatId: "s2-beat2", beatName: "Take the CROW" } });
+check(r.res.status === 200 && r.data.notified === 2, "notify-drop emails the 2 subscribers once");
+
+r = await api("/api/notify-drop", { method: "POST", body: { beatId: "s2-beat2", beatName: "Take the CROW" } });
+check(r.data.notified === 0 && r.data.already === true, "notify-drop is idempotent (no duplicate sends)");
+check(mock.emails.length === emailsBeforeDrop + 2, "exactly 2 drop emails sent for the beat");
+
+r = await api("/api/notify-drop", { method: "POST", body: { beatId: "s2-beat9" } });
+check(r.res.status === 200 && r.data.notified === 0, "notify-drop with no subscribers is a no-op");
+
+// ───────────────────────────────────────────────────────────────────────────
 // Summary
 // ───────────────────────────────────────────────────────────────────────────
 INFO("FINAL STATUS REPORT");
