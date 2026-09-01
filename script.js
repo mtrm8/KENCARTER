@@ -163,17 +163,16 @@ function tickS02(now = Date.now()) {
     return;
   }
 
-  if (now < Date.parse(S02_FINAL_DROP_AT)) {
-    if (kicker) kicker.textContent = "SEASON 02 \u2014 FINAL DROP IN";
-    const remaining = Date.parse(S02_FINAL_DROP_AT) - now;
-    el.textContent = remaining <= 0 ? "FINAL DROP READY" : formatRemaining(remaining);
-    return;
-  }
-
   if (now < Date.parse(S02_CLOSE_AT)) {
-    if (kicker) kicker.textContent = "SEASON 02 \u2014 CLOSES IN";
-    const remaining = Date.parse(S02_CLOSE_AT) - now;
-    el.textContent = remaining <= 0 ? "CLOSING" : formatRemaining(remaining);
+    const afterFinalDrop = now >= Date.parse(S02_FINAL_DROP_AT);
+    if (afterFinalDrop) {
+      if (kicker) kicker.textContent = "SEASON 02 \u2014 CLOSES IN";
+      const remaining = Date.parse(S02_CLOSE_AT) - now;
+      el.textContent = remaining <= 0 ? "EXPIRED" : formatRemaining(remaining);
+    } else {
+      if (kicker) kicker.textContent = "SEASON 02 \u2014 IS LIVE";
+      el.textContent = "LIVE NOW";
+    }
     return;
   }
 
@@ -267,7 +266,7 @@ const BTC_ENDPOINT =
   "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,tether,usd-coin&vs_currencies=usd";
 
 const KEN_MINT = "HEFkC6WQo3jTv39B6JhYQJ3ZW8xKxRELaWdnirdSpump";
-const MERCHANT_SOL_ADDRESS = "2P2m2u46hg7a7eK6YSjtogSv4QnExEdfsjAKkGz719aX";
+const MERCHANT_SOL_ADDRESS = "U8rFsuwmY5bXftVwmJt43VYApgFE6MbEhZbUcXwamnS";
 let connectedWalletAddress = null;
 let isKenHolder = false;
 

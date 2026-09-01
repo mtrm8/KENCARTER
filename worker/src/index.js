@@ -5,7 +5,7 @@
  * site's public JavaScript.
  *
  * Settlement: Solana network (SOL & SPL tokens, e.g. USDC / USDT on Solana)
- *   Merchant wallet: 2P2m2u46hg7a7eK6YSjtogSv4QnExEdfsjAKkGz719aX
+ *   Merchant wallet: U8rFsuwmY5bXftVwmJt43VYApgFE6MbEhZbUcXwamnS
  *   Payments route through NOWPayments to ensure proper conversion
  *   and on-chain verification before files are released.
  *
@@ -28,7 +28,7 @@ const NP_API = "https://api.nowpayments.io/v1";
 const STATICFORMS_ENDPOINT = "https://api.staticforms.dev/submit";
 
 const KEN_MINT = "HEFkC6WQo3jTv39B6JhYQJ3ZW8xKxRELaWdnirdSpump";
-const MERCHANT_SOL_ADDRESS = "2P2m2u46hg7a7eK6YSjtogSv4QnExEdfsjAKkGz719aX";
+const MERCHANT_SOL_ADDRESS = "U8rFsuwmY5bXftVwmJt43VYApgFE6MbEhZbUcXwamnS";
 
 const COIN_CODES = {
   USDT: "usdtsol",

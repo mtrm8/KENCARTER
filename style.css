@@ -1668,6 +1668,19 @@ button {
   text-align: center;
 }
 
+.ken-benefits {
+  box-sizing: border-box;
+  padding: 0 16px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.ken-benefits__inner {
+  box-sizing: border-box;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
 .ken-benefits__kicker {
   display: block;
   font-size: 11px;
@@ -1687,6 +1700,8 @@ button {
   font-size: 10px;
   letter-spacing: 0.08em;
   font-weight: 700;
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 .ken-benefits__item {
@@ -1694,9 +1709,22 @@ button {
   padding: 8px 14px;
   background: var(--white);
   transition: background 0.15s ease, color 0.15s ease;
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 .ken-benefits__item:hover {
   background: var(--black);
   color: var(--white);
+}
+
+@media (max-width: 600px) {
+  .ken-benefits__grid {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ken-benefits__item {
+    width: 100%;
+    text-align: center;
+  }
 }
