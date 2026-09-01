@@ -1350,6 +1350,22 @@ button {
   .cart-items li {
     flex-wrap: wrap;
   }
+  .beat-alert-form {
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
+  }
+  .beat-alert-input {
+    width: 100%;
+    box-sizing: border-box;
+    max-width: 100%;
+  }
+  .beat-alert-btn {
+    width: 100%;
+    box-sizing: border-box;
+    white-space: normal;
+  }
 }
 
 /* Selected state classes for lease/exclusive in B&W minimalist style */
