@@ -708,6 +708,10 @@ button {
   color: var(--white);
   padding: 34px 26px 28px;
   text-align: center;
+  margin: auto;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   animation: payscreen-pop 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
