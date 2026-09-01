@@ -1154,10 +1154,25 @@ function renderNpPayment() {
   $("payscreen-equiv").textContent = `${npPayment.pay_amount} ${String(npPayment.pay_currency).toUpperCase()}`;
   $("payscreen-network").textContent = "SEND VIA SOLANA NETWORK";
   $("payscreen-address").textContent = npPayment.pay_address;
+  renderPayQr(npPayment.pay_address);
   $("payscreen-payblock").hidden = false;
   const btn = $("copy-address");
   btn.disabled = false;
   btn.textContent = "COPY ADDRESS";
+}
+
+function renderPayQr(address) {
+  const host = $("payscreen-qr");
+  if (!host || !address || typeof qrcode !== "function") return;
+  host.innerHTML = "";
+  try {
+    const qr = qrcode(0, "M");
+    qr.addData("solana:" + address);
+    qr.make();
+    host.innerHTML = qr.createImgTag(5, 8);
+  } catch (err) {
+    console.error("QR render failed:", err);
+  }
 }
 
 function startNpPolling(orderId) {
@@ -1294,6 +1309,8 @@ function hidePayscreen() {
   payScreenOrder = null;
   payScreenSym = null;
   npPayment = null;
+  const qrHost = $("payscreen-qr");
+  if (qrHost) qrHost.innerHTML = "";
   document.body.style.overflow = "";
   return true;
 }

@@ -883,6 +883,22 @@ button {
   .np-status--warn { animation: none; }
 }
 
+.payscreen__qr {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.payscreen__qr img {
+  display: block;
+  width: 180px;
+  height: 180px;
+  border: 1px solid #fff;
+  padding: 8px;
+  background: #fff;
+  box-sizing: border-box;
+}
+
 .payscreen__address {
   display: block;
   margin-top: 14px;
