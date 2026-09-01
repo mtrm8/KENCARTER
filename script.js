@@ -54,7 +54,7 @@ function defaultSeason() {
 // Season registry for announced seasons (Season 1 and Season 2).
 const SEASONS = [
   { id: "S01", label: "SEASON 1", closeAt: "2026-08-29T20:00:00Z" },
-  { id: "S02", label: "SEASON 2", launchAt: S02_OPEN_AT, closeAt: "2026-09-30T20:00:00Z" }
+  { id: "S02", label: "SEASON 2", launchAt: "2026-09-01T00:00:00Z", closeAt: "2026-09-30T20:00:00Z" }
 ];
 
 function seasonLaunchAt(s) {
@@ -173,7 +173,7 @@ function tickS02(now = Date.now()) {
   if (now < Date.parse(S02_CLOSE_AT)) {
     if (kicker) kicker.textContent = "SEASON 02 \u2014 CLOSES IN";
     const remaining = Date.parse(S02_CLOSE_AT) - now;
-    el.textContent = remaining <= 0 ? "EXPIRED" : formatRemaining(remaining);
+    el.textContent = remaining <= 0 ? "CLOSING" : formatRemaining(remaining);
     return;
   }
 
@@ -267,7 +267,7 @@ const BTC_ENDPOINT =
   "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,tether,usd-coin&vs_currencies=usd";
 
 const KEN_MINT = "HEFkC6WQo3jTv39B6JhYQJ3ZW8xKxRELaWdnirdSpump";
-const MERCHANT_SOL_ADDRESS = "U8rFsuwmY5bXftVwmJt43VYApgFE6MbEhZbUcXwamnS";
+const MERCHANT_SOL_ADDRESS = "2P2m2u46hg7a7eK6YSjtogSv4QnExEdfsjAKkGz719aX";
 let connectedWalletAddress = null;
 let isKenHolder = false;
 
