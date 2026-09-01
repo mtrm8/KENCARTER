@@ -3,6 +3,7 @@
   --white: #fff;
   --gray: #757575;
   --hairline: #000;
+  --layout-max: 1440px;
 }
 
 * {
@@ -43,7 +44,8 @@ main {
 
 .viewport {
   width: 100%;
-  max-width: 100%;
+  max-width: var(--layout-max);
+  margin: 0 auto;
   overflow-x: hidden;
   position: relative;
   display: flex;
