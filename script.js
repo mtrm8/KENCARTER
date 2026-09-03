@@ -1898,3 +1898,15 @@ if (walletModal) {
     connectActionBtn.addEventListener("click", connectSolanaWallet);
   }
 }
+
+(() => {
+  const items = document.querySelectorAll(".ken-benefits__item");
+  if (items.length < 2) return;
+  const activate = () => {
+    const scrolled = window.scrollY > 10;
+    items[0].classList.toggle("ken-benefits__item--active", !scrolled);
+    items[1].classList.toggle("ken-benefits__item--active", scrolled);
+  };
+  window.addEventListener("scroll", activate, { passive: true });
+  activate();
+})();
