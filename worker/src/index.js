@@ -20,7 +20,8 @@
  * Secrets (wrangler secret put …):
  *   NOWPAYMENTS_API_KEY     payments API key
  *   NOWPAYMENTS_IPN_SECRET  IPN signing secret (dashboard → IPN settings)
- *   STATICFORMS_API_KEY     form backend used to email delivery
+ *   RESEND_API_KEY          transaction email API key (free tier: 3k/mo)
+ *   RESEND_FROM             verified sender, e.g. "KEN CARTER <noreply@…>"
  *   BEAT_LINKS              JSON: { "beat1": "https://drive…", … }
  *   BEAT_DROPS              JSON: { "beatId": "ISO drop time", … } (cron)
  *
@@ -28,7 +29,7 @@
  */
 
 const NP_API = "https://api.nowpayments.io/v1";
-const STATICFORMS_ENDPOINT = "https://api.staticforms.dev/submit";
+const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
 const KEN_MINT = "HEFkC6WQo3jTv39B6JhYQJ3ZW8xKxRELaWdnirdSpump";
 const MERCHANT_SOL_ADDRESS = "U8rFsuwmY5bXftVwmJt43VYApgFE6MbEhZbUcXwamnS";
@@ -203,14 +204,6 @@ export async function verifyIpnSignature(ipnSecret, rawBody, signature) {
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function artistNameFromEmail(email) {
-  const tokens = (email.split("@")[0] || "")
-    .split(/[^a-zA-Z]+/)
-    .filter((t) => /[a-zA-Z]/.test(t))
-    .slice(0, 3);
-  return tokens.map((t) => t.toUpperCase()).join(" ").slice(0, 28) || "ARTIST";
-}
 
 const esc = (s) =>
   String(s).replace(/[&<>"']/g, (c) =>
@@ -402,25 +395,58 @@ async function isBeatExclusiveSold(env, beatId) {
   return raw ? JSON.parse(raw).sold === true : false;
 }
 
-async function sendDeliveryEmail(env, rec, links, payment, isExclusive = false) {
-  const payload = {
-    apiKey: env.STATICFORMS_API_KEY,
-    email: rec.email,
-    message: `PAYMENT FINISHED — ${money(rec.total)} — ${(rec.labeled || []).join(", ")} — LINKS RELEASED`,
-    Beats: (rec.labeled || []).join(", "),
-    Free: rec.freeTitles && rec.freeTitles.length ? rec.freeTitles.join(", ") : "—",
-    PaymentStatus: "PAID — VERIFIED BY NOWPAYMENTS IPN (finished)",
-    NPPaymentId: String(payment.payment_id || ""),
-    Total: money(rec.total),
-    ArtistName: artistNameFromEmail(rec.email),
-    PaymentDetailsHtml: deliveryHtml(rec, links) + (isExclusive ? exclusiveLicenseHtml() : licenseHtml(isExclusive)),
-    LicenseText: isExclusive ? EXCLUSIVE_LICENSE_TEXT : LICENSE_TEXT,
-    Date: new Date().toUTCString()
-  };
-  await fetch(STATICFORMS_ENDPOINT, {
+// Emails go out via Resend (free tier: 3,000 emails/month), which delivers
+// straight to the customer — no auto-reply feature to configure. Requirements:
+//   1. RESEND_API_KEY: set with `npx wrangler secret put RESEND_API_KEY`.
+//   2. RESEND_FROM: a sender address on a domain you've VERIFIED in Resend
+//      (Resend lets you add ONE domain on the free plan). The placeholder
+//      onboarding@resend.dev only reaches the account owner's own inbox, so a
+//      verified domain is required for customer-facing mail.
+// Responses are validated so a bad/missing key, unverified sender, or quota
+// hit surfaces as an error instead of failing silently.
+async function sendEmail(env, { to, subject, html, text = "" }) {
+  const apiKey = env.RESEND_API_KEY;
+  if (!apiKey) throw new Error("RESEND_API_KEY NOT CONFIGURED");
+  const from = env.RESEND_FROM;
+  if (!from) throw new Error("RESEND_FROM NOT CONFIGURED");
+  const body = { from, to, subject, reply_to: to };
+  if (html) body.html = html;
+  if (text) body.text = text;
+  const res = await fetch(RESEND_ENDPOINT, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify(payload)
+    headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const err = new Error(
+      (data && (data.message || data.error)) || "RESEND ERROR " + res.status
+    );
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+async function sendDeliveryEmail(env, rec, links, payment, isExclusive = false) {
+  const invoiceHeader =
+    `<p style="margin:0 0 6px;font-size:11px;color:#888888;">PAID — VERIFIED BY NOWPAYMENTS IPN (finished) &middot; Payment ID ${esc(String(payment.payment_id || ""))} &middot; ${money(rec.total)} &middot; ${new Date().toUTCString()}</p>`;
+  const html =
+    invoiceHeader +
+    deliveryHtml(rec, links) +
+    (isExclusive ? exclusiveLicenseHtml() : licenseHtml(isExclusive));
+  const text =
+    `PAID — VERIFIED BY NOWPAYMENTS IPN (finished)\n` +
+    `Payment ID: ${payment.payment_id || ""}\n` +
+    `Total: ${money(rec.total)}\n` +
+    `Beats: ${(rec.labeled || []).join(", ")}\n` +
+    `Free: ${rec.freeTitles && rec.freeTitles.length ? rec.freeTitles.join(", ") : "—"}\n\n` +
+    (isExclusive ? EXCLUSIVE_LICENSE_TEXT : LICENSE_TEXT);
+  await sendEmail(env, {
+    to: rec.email,
+    subject: `PAYMENT FINISHED — ${money(rec.total)} — ${(rec.labeled || []).join(", ")} — LINKS RELEASED`,
+    html,
+    text
   });
 }
 
@@ -529,20 +555,18 @@ async function handleNotifyClosure(request, env) {
   const { season, email } = body || {};
   if (!email || !EMAIL_RE.test(email)) return json(env, { error: "INVALID EMAIL" }, 400);
 
-  const payload = {
-    apiKey: env.STATICFORMS_API_KEY,
-    email,
-    message: `SEASON ${season === "S02" ? "02" : season} HAS CLOSED — CATALOG ARCHIVED`,
-    Season: season,
-    Status: "SEASON CLOSED & ARCHIVED",
-    Date: new Date().toUTCString()
-  };
-  await fetch(STATICFORMS_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify(payload)
-  });
-  return json(env, { ok: true });
+  try {
+    const label = season === "S02" ? "02" : season;
+    await sendEmail(env, {
+      to: email,
+      subject: `SEASON ${label} HAS CLOSED — CATALOG ARCHIVED`,
+      text: `SEASON ${label} HAS CLOSED — CATALOG ARCHIVED\nStatus: SEASON CLOSED & ARCHIVED\nDate: ${new Date().toUTCString()}`
+    });
+    return json(env, { ok: true });
+  } catch (err) {
+    console.error("Season-closure email failed:", err.message);
+    return json(env, { error: "EMAIL FAILED" }, 502);
+  }
 }
 
 // Per-beat "notify me when it drops" signups. Stores the email (deduped) under
@@ -572,20 +596,16 @@ async function handleNotifyBeat(request, env) {
       await env.ORDERS.put(notifyKey(beatId), JSON.stringify(emails), { expirationTtl: 60 * 60 * 24 * 90 });
     }
 
-    const payload = {
-      apiKey: env.STATICFORMS_API_KEY,
-      email: String(email).trim(),
-      message: `BEAT DROP NOTIFICATION SIGNUP — ${beatName || beatId}`,
-      Beat: beatName || beatId,
-      BeatId: beatId,
-      DropDate: dropDate || (dropLabel ? new Date(dropLabel).toUTCString() : ""),
-      Status: "SUBSCRIBED — WE'LL EMAIL YOU THE MOMENT THIS BEAT DROPS",
-      Date: new Date().toUTCString()
-    };
-    await fetch(STATICFORMS_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(payload)
+    const subject = `BEAT DROP NOTIFICATION SIGNUP — ${beatName || beatId}`;
+    await sendEmail(env, {
+      to: String(email).trim(),
+      subject,
+      text:
+        `BEFORE IT DROPS ${beatName || beatId} — SUBSCRIBED\n` +
+        `Beat: ${beatName || beatId}\nBeatId: ${beatId}\n` +
+        `DropDate: ${dropDate || (dropLabel ? new Date(dropLabel).toUTCString() : "")}\n` +
+        `Status: SUBSCRIBED — WE'LL EMAIL YOU THE MOMENT THIS BEAT DROPS\n` +
+        `Date: ${new Date().toUTCString()}`
     });
 
     return json(env, { ok: true, subscribed: true, beatId, added, count: emails.length });
@@ -620,19 +640,14 @@ async function handleNotifyDrop(request, env) {
   let sent = 0;
   for (const email of emails) {
     try {
-      const payload = {
-        apiKey: env.STATICFORMS_API_KEY,
-        email,
-        message: `${beatName || beatId} IS NOW AVAILABLE — GRAB IT BEFORE THE LEASES SELL OUT`,
-        Beat: beatName || beatId,
-        BeatId: beatId,
-        Status: "BEAT IS LIVE — LEASE NOW (pick 2, get 1 free)",
-        Date: new Date().toUTCString()
-      };
-      await fetch(STATICFORMS_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify(payload)
+      await sendEmail(env, {
+        to: email,
+        subject: `${beatName || beatId} IS NOW AVAILABLE — GRAB IT BEFORE THE LEASES SELL OUT`,
+        text:
+          `${beatName || beatId} IS NOW AVAILABLE — GRAB IT BEFORE THE LEASES SELL OUT\n` +
+          `Beat: ${beatName || beatId}\nBeatId: ${beatId}\n` +
+          `Status: BEAT IS LIVE — LEASE NOW (pick 2, get 1 free)\n` +
+          `Date: ${new Date().toUTCString()}`
       });
       sent++;
     } catch (err) {

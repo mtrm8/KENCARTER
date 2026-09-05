@@ -1,6 +1,6 @@
 // test-e2e.mjs — comprehensive end-to-end audit of the KENCARTER store
 // Runs the actual Cloudflare Worker (src/index.js) against a mocked
-// NOWPayments API, StaticForms delivery email, and an in-memory KV binding,
+// NOWPayments API, Resend delivery email, and an in-memory KV binding,
 // exercising the full buy → pay → IPN → release → download/license flow.
 //
 // Run:  node worker/test-e2e.mjs
@@ -57,7 +57,7 @@ const mock = {
   paySeq: 9000,
   emails: [],
   payments: [],
-  calls: { np: [], staticforms: [] },
+  calls: { np: [], resend: [] },
   minAmount: 1,
   estimateUsd: 1
 };
@@ -74,14 +74,15 @@ const env = {
   ALLOWED_ORIGIN: ORIGIN,
   NOWPAYMENTS_API_KEY: "test-np-key",
   NOWPAYMENTS_IPN_SECRET: "test-ipn-secret-0123456789",
-  STATICFORMS_API_KEY: "test-sf-key",
+  RESEND_API_KEY: "test-resend-key",
+  RESEND_FROM: "KEN CARTER <noreply@example.com>",
   IPN_CALLBACK_URL: "https://worker.local/api/ipn",
   MIN_LOOKUP_DELAY_MS: "0"
 };
 const SECRET = env.NOWPAYMENTS_IPN_SECRET;
 
 const NP_API = "https://api.nowpayments.io/v1";
-const SF_API = "https://api.staticforms.dev/submit";
+const RESEND_API = "https://api.resend.com/emails";
 
 const realFetch = globalThis.fetch;
 const ctxTasks = [];
@@ -113,10 +114,10 @@ globalThis.fetch = async (ful, opts = {}) => {
     if (path.startsWith("/min-amount")) return j({ min_amount: mock.minAmount });
     if (path.startsWith("/estimate")) return j({ estimated_amount: mock.estimateUsd });
   }
-  if (u.startsWith(SF_API)) {
-    mock.calls.staticforms.push(u);
+  if (u.startsWith(RESEND_API)) {
+    mock.calls.resend.push(u);
     mock.emails.push(JSON.parse(opts.body || "{}"));
-    return j({ success: true }, 200);
+    return j({ id: "email_" + (+mock.paySeq + 1) }, 200);
   }
   throw new Error("UNEXPECTED MOCKED FETCH: " + u);
 };
@@ -280,13 +281,16 @@ check(await kv.get("exclusive:beat1") === null, "lease-only beat NOT marked excl
 
 check(mock.emails.length === 1, "exactly one delivery email dispatched for mixed order");
 const mixEmail = mock.emails[0] || {};
-check(mixEmail.email === "producer@example.com", "email sent to purchaser address");
-check(/LICENSE|EXCLUSIVE|CONTRACT/.test(mixEmail.LicenseText || ""), "email carries license text");
-check(mixEmail.LicenseText.trim() === EXCLUSIVE, "EXCLUSIVE order email embeds EXACT EXCLUSIVE_LICENSE.txt text");
-check((mixEmail.PaymentDetailsHtml || "").includes("EXCLUSIVE MASTER RIGHTS LICENSE"), "email HTML includes exclusive license block");
-check((mixEmail.PaymentDetailsHtml || "").includes("NORTH STAR"), "email HTML lists purchased beats");
-check(/PAID — VERIFIED BY NOWPAYMENTS IPN/.test(mixEmail.PaymentStatus || ""), "email reports IPN-verified finished payment");
-check(mixEmail.Total === "$329.85", "email shows exact cart total");
+check(mixEmail.to === "producer@example.com", "email sent to purchaser address");
+check(mixEmail.from === "KEN CARTER <noreply@example.com>", "email uses verified RESEND_FROM sender");
+check(/LICENSE|EXCLUSIVE|CONTRACT/.test(mixEmail.text || ""), "email carries license text");
+check(mixEmail.text.trim().endsWith(EXCLUSIVE), "EXCLUSIVE order email ends with EXACT EXCLUSIVE_LICENSE.txt text");
+check((mixEmail.html || "").includes("EXCLUSIVE MASTER RIGHTS LICENSE"), "email HTML includes exclusive license block");
+check((mixEmail.html || "").includes("NORTH STAR"), "email HTML lists purchased beats");
+check(/PAID — VERIFIED BY NOWPAYMENTS IPN/.test(mixEmail.html || ""), "email reports IPN-verified finished payment");
+check((mixEmail.html || "").includes("$329.85"), "email shows exact cart total");
+check(/^PAYMENT FINISHED —/.test(mixEmail.subject || ""), "delivery email subject flags payment finished");
+check(/LINKS RELEASED$/.test(mixEmail.subject || ""), "delivery email subject flags links released");
 
 // PaymentStatus copy also reflects finished status in NP_STATUS_COPY map
 check(mock.calls.np.some((u) => u.includes("/payment")), "NOWPayments API was consulted during checkout/IPN flow");
@@ -313,10 +317,10 @@ r = await api("/api/ipn", { method: "POST", body: JSON.stringify(leaseFinished),
 check(r.res.status === 200 && r.data.released === true, "lease IPN 'finished' releases order");
 await drain();
 const leaseEmail = mock.emails[1] || {};
-check(leaseEmail.LicenseText.trim() === LEASE, "LEASE order email embeds EXACT LICENSE.txt text");
-check(!leaseEmail.LicenseText.includes("EXCLUSIVE MASTER RIGHTS"), "lease email must NOT contain exclusive text");
-check((leaseEmail.PaymentDetailsHtml || "").includes("OFFICIAL LEASE LICENSE CONTRACT"), "lease email HTML uses lease license block");
-check((leaseEmail.PaymentDetailsHtml || "").includes("RED ROVER") && (leaseEmail.PaymentDetailsHtml || "").includes("MIDNIGHT"), "lease email lists all beats");
+check(leaseEmail.text.trim().endsWith(LEASE), "LEASE order email ends with EXACT LICENSE.txt text");
+check(!leaseEmail.text.includes("EXCLUSIVE MASTER RIGHTS"), "lease email must NOT contain exclusive text");
+check((leaseEmail.html || "").includes("OFFICIAL LEASE LICENSE CONTRACT"), "lease email HTML uses lease license block");
+check((leaseEmail.html || "").includes("RED ROVER") && (leaseEmail.html || "").includes("MIDNIGHT"), "lease email lists all beats");
 check(await kv.get("exclusive:beat1") === null && await kv.get("exclusive:beat3") === null, "lease order creates NO exclusive_sold markers");
 
 const leaseStatus = await api("/api/status?order_id=" + leaseOrderId);
@@ -400,7 +404,7 @@ check(r.res.status === 400, "/api/notify-beat rejects invalid email");
 
 r = await api("/api/notify-beat", { method: "POST", body: { beatId: "s2-beat2", beatName: "Take the CROW", email: "fan@example.com" } });
 check(r.res.status === 200 && r.data.ok && r.data.subscribed && r.data.count === 1, "notify-beat stores subscription + confirms (1)");
-check(mock.emails.length === beforeEmails + 1 && /DROP NOTIFICATION/.test(mock.emails[mock.emails.length - 1].message), "notify-beat sends confirmation email");
+check(mock.emails.length === beforeEmails + 1 && /DROP NOTIFICATION/.test(mock.emails[mock.emails.length - 1].subject || ""), "notify-beat sends confirmation email");
 
 r = await api("/api/notify-beat", { method: "POST", body: { beatId: "s2-beat2", email: "FAN@example.com" } });
 check(r.data.count === 1 && r.data.added === false, "notify-beat dedupes same email (case-insensitive)");
@@ -425,11 +429,11 @@ check(r.res.status === 200 && r.data.notified === 0, "notify-drop with no subscr
 // ───────────────────────────────────────────────────────────────────────────
 INFO("FINAL STATUS REPORT");
 console.log("  Payment provider .... NOWPayments (Solana settlement) — NOT Helio (no Helio code in repo)");
-console.log("  Delivery channel .... StaticForms auto-reply email, embedded license");
+console.log("  Delivery channel .... Resend API (free tier) email, embedded license");
 console.log("  KV bindings ......... order:{id}, exclusive:{beat} (never marks leases)");
 console.log("  Release trigger ..... IPN payment_status === 'finished' (HMAC-SHA512 verified)");
 console.log(`  Email verified ...... ${mock.emails.length} delivery email(s) captured`);
-console.log(`  NOWPayments calls ... ${mock.calls.np.length}; StaticForms calls ${mock.calls.staticforms.length}`);
+console.log(`  NOWPayments calls ... ${mock.calls.np.length}; Resend calls ${mock.calls.resend.length}`);
 finish("\nEND-TO-END VERIFICATION", `${pass + fail} total assertions`);
 
 globalThis.fetch = realFetch;

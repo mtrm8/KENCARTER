@@ -22,7 +22,8 @@ npx wrangler kv namespace create ORDERS     # paste the id into wrangler.toml
 
 npx wrangler secret put NOWPAYMENTS_API_KEY
 npx wrangler secret put NOWPAYMENTS_IPN_SECRET
-npx wrangler secret put STATICFORMS_API_KEY
+npx wrangler secret put RESEND_API_KEY
+npx wrangler secret put RESEND_FROM         # "KEN CARTER <noreply@your-verified-domain>"
 npx wrangler secret put BEAT_LINKS          # paste JSON from step below
 npx wrangler secret put BEAT_DROPS          # paste JSON (beatId → ISO drop time)
 
@@ -31,6 +32,31 @@ npm run deploy
 
 `BEAT_DROPS` drives the `scheduled` cron (fires every 6h): it emails each beat's
 subscribers one time, once the beat's drop time has passed.
+
+## Send emails with Resend (free tier)
+
+All worker mail (`/api/notify-beat`, `/api/notify-drop`, `/api/notify-closure`,
+and the order confirmation after a `finished` IPN) is sent via the
+[Resend API](https://resend.com) — the free plan is 3,000 emails/month and
+delivers straight to the customer (no auto-reply feature to configure). Setup:
+
+1. Create a free Resend account (no credit card) → **Add Domain** → add the DNS
+   records (SPF/DKIM/DMARC) for a domain you control, and wait for verification.
+2. Create an **API key** in your Resend dashboard.
+3. Deploy the two secrets:
+   ```bash
+   npx wrangler secret put RESEND_API_KEY         # re_… from the dashboard
+   npx wrangler secret put RESEND_FROM            # "KEN CARTER <noreply@your-domain>"
+   ```
+   The sender domain must be the verified one. (The placeholder
+   `onboarding@resend.dev` provided by Resend only delivers to the account
+   owner's own inbox, so a verified domain is required for customer mail.)
+4. Redeploy: `npm run deploy`.
+
+The Worker checks the API key and `RESEND_FROM` are set, and validates every
+Resend response — a bad key, unverified sender, or quota hit surfaces via the
+API response and worker logs instead of failing silently. Confirm the secrets
+are deployed with `npx wrangler secret list`.
 
 ## Per-beat "notify me" endpoints
 

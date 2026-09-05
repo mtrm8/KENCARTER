@@ -2,15 +2,9 @@
 <!--
   KEN CARTER — SEASON 01 ORDER CONFIRMATION / PAYMENT INSTRUCTIONS
   ─────────────────────────────────────────────────────────────────
-  This template is dispatched by the Cloudflare Worker (worker/) through
-  StaticForms' auto-reply after a payment is verified via IPN. The browser
-  never submits anything directly.
-
-  ACTIVATE (Static Forms dashboard → Forms → your form):
-    1. AUTO-REPLY tab → Enabled ON.
-       Subject:  SEASON 01 — YOUR FILES & LEASE AGREEMENT
-    2. Paste EVERYTHING below <body> into the message body.
-    3. Save. The Worker's POST triggers this email with live download links.
+  This template is dispatched by the Cloudflare Worker (worker/) via the
+  Resend API after a payment is verified via IPN (free tier, no dashboard
+  auto-reply required). The browser never submits anything directly.
 
   DYNAMIC PLACEHOLDERS (injected by worker/src/index.js on IPN 'finished'):
     {{field:ArtistName}}        → greeting name, derived from buyer email

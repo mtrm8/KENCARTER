@@ -206,7 +206,7 @@ if (emailFunc) {
   const checks = [
     ["deliveryHtml.*links", "includes download links in email"],
     ["licenseHtml()", "adds formatted license to email"],
-    ["LicenseText:", "includes raw license text for StaticForms"]
+    ["const text =", "builds plain-text body for Resend"]
   ];
   let emailFail = 0;
   for (const [pattern, desc] of checks) {
