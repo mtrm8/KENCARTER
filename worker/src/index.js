@@ -31,6 +31,9 @@
 const NP_API = "https://api.nowpayments.io/v1";
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
+const LOGO_URL = "https://www.kencarter.abrdns.com/assets/logo.jpg";
+const SITE_URL = "https://www.kencarter.abrdns.com";
+
 const KEN_MINT = "HEFkC6WQo3jTv39B6JhYQJ3ZW8xKxRELaWdnirdSpump";
 const MERCHANT_SOL_ADDRESS = "U8rFsuwmY5bXftVwmJt43VYApgFE6MbEhZbUcXwamnS";
 
@@ -232,6 +235,62 @@ function deliveryHtml(rec, links) {
     `<table width="100%" style="border-collapse:collapse;">${rows}</table>` +
     `<div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#888888;margin:18px 0 10px;">YOUR FILES — INSTANT DOWNLOAD</div>${files}` +
     `<p style="margin:14px 0 0;font-size:12px;color:#888888;">Your official lease license contract accompanies this email.</p>`
+  );
+}
+
+// Shared dark/monochrome HTML template for notification emails
+// (beat-drop signup, beat-drop live, season-closure). Fully inline-styled
+// for maximum email-client compatibility; `text` fallback is set by callers.
+function notificationHtml({ eyebrow, title, subtitle, rows, cta }) {
+  const details = rows
+    .map(
+      ([label, value]) =>
+        `<tr>` +
+        `<td style="padding:10px 0;font-size:10px;line-height:1.4;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;color:#6b6b6b;border-bottom:1px solid #191919;vertical-align:top;">${esc(label)}</td>` +
+        `<td style="padding:10px 0;font-size:12px;line-height:1.5;color:#f2f2f2;text-align:right;font-weight:600;border-bottom:1px solid #191919;vertical-align:top;">${value}</td>` +
+        `</tr>`
+    )
+    .join("");
+  const ctaHtml = cta
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-top:22px;">
+         <a href="${esc(cta.url)}" target="_blank" rel="noopener" style="display:inline-block;padding:13px 36px;background-color:#f5f5f5;color:#000000;font-size:11px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;text-decoration:none;">${esc(cta.label)} →</a>
+       </td></tr></table>`
+    : "";
+  return (
+    `<!DOCTYPE html><html lang="en">` +
+    `<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">` +
+    `<meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark">` +
+    `<title>${esc(title)} — KEN CARTER</title></head>` +
+    `<body style="margin:0;padding:0;background-color:#000000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#ffffff;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">` +
+    `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${esc(title)} — KEN CARTER&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;</div>` +
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#000000" style="background-color:#000000;border-collapse:collapse;">` +
+    `<tr><td align="center" style="padding:28px 12px;">` +
+    `<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;margin:0 auto;border:1px solid #222222;border-collapse:collapse;">` +
+    // header — logo
+    `<tr><td align="center" style="padding:36px 20px 24px;border-bottom:1px solid #1a1a1a;">` +
+    `<a href="${SITE_URL}" target="_blank" rel="noopener" style="text-decoration:none;">` +
+    `<img src="${LOGO_URL}" alt="KEN CARTER" width="170" style="display:block;width:170px;max-width:170px;height:auto;border:0;outline:none;text-decoration:none;" />` +
+    `</a></td></tr>` +
+    // title block
+    `<tr><td align="center" style="padding:30px 24px 0;">` +
+    `<div style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#7a7a7a;margin-bottom:10px;">${esc(eyebrow)}</div>` +
+    `<h1 style="font-size:17px;font-weight:600;letter-spacing:2px;text-transform:uppercase;margin:0;color:#ffffff;line-height:1.4;">${esc(title)}</h1>` +
+    `<p style="font-size:11px;color:#777777;letter-spacing:1px;text-transform:uppercase;margin:8px 0 0;">${subtitle ? esc(subtitle) : "KEN CARTER"}</p>` +
+    `</td></tr>` +
+    // details box
+    `<tr><td style="padding:26px 26px 34px;">` +
+    `<div style="background-color:#0b0b0b;border:1px solid #2a2a2a;padding:20px 22px;">` +
+    `<div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#8a8a8a;border-bottom:1px solid #222222;padding-bottom:10px;">NOTIFICATION DETAILS</div>` +
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">${details}</table>` +
+    `${ctaHtml}` +
+    `</div></td></tr>` +
+    // footer
+    `<tr><td align="center" style="padding:26px 20px;border-top:1px solid #1a1a1a;background-color:#050505;">` +
+    `<p style="font-size:10px;color:#555555;margin:0 0 8px;letter-spacing:1px;">KEN CARTER — ALL RIGHTS RESERVED</p>` +
+    `<p style="font-size:10px;color:#434343;margin:0;"><a href="${SITE_URL}" target="_blank" rel="noopener" style="color:#666666;text-decoration:none;">kencarter.abrdns.com</a></p>` +
+    `</td></tr>` +
+    `</table></td></tr></table>` +
+    `</body></html>`
   );
 }
 
@@ -557,10 +616,20 @@ async function handleNotifyClosure(request, env) {
 
   try {
     const label = season === "S02" ? "02" : season;
+    const ts = new Date().toUTCString();
     await sendEmail(env, {
       to: email,
       subject: `SEASON ${label} HAS CLOSED — CATALOG ARCHIVED`,
-      text: `SEASON ${label} HAS CLOSED — CATALOG ARCHIVED\nStatus: SEASON CLOSED & ARCHIVED\nDate: ${new Date().toUTCString()}`
+      text: `SEASON ${label} HAS CLOSED — CATALOG ARCHIVED\nStatus: SEASON CLOSED & ARCHIVED\nDate: ${ts}`,
+      html: notificationHtml({
+        eyebrow: "KEN CARTER",
+        title: `SEASON ${label} HAS CLOSED`,
+        subtitle: "CATALOG ARCHIVED",
+        rows: [
+          ["Status", "SEASON CLOSED &amp; ARCHIVED"],
+          ["Date", ts]
+        ]
+      })
     });
     return json(env, { ok: true });
   } catch (err) {
@@ -573,7 +642,7 @@ async function handleNotifyClosure(request, env) {
 // notify-sub:<beatId> and emails a confirmation. Nothing order-related here.
 async function handleNotifyBeat(request, env) {
   const body = await request.json().catch(() => null);
-  const { beatId, beatName, email, dropDate, dropLabel } = body || {};
+  const { beatId, email, dropDate, dropLabel } = body || {};
 
   if (!beatId) return json(env, { error: "MISSING BEAT" }, 400);
   if (!email || !EMAIL_RE.test(email)) return json(env, { error: "INVALID EMAIL" }, 400);
@@ -596,16 +665,32 @@ async function handleNotifyBeat(request, env) {
       await env.ORDERS.put(notifyKey(beatId), JSON.stringify(emails), { expirationTtl: 60 * 60 * 24 * 90 });
     }
 
-    const subject = `BEAT DROP NOTIFICATION SIGNUP — ${beatName || beatId}`;
+    const dropDate =
+      dropDate ||
+      (dropLabel ? new Date(dropLabel).toUTCString() : undefined) ||
+      "—";
+    const ts = new Date().toUTCString();
+    const subject = "BEAT DROP NOTIFICATION SIGNUP — UPCOMING BEAT";
     await sendEmail(env, {
       to: String(email).trim(),
       subject,
       text:
-        `BEFORE IT DROPS ${beatName || beatId} — SUBSCRIBED\n` +
-        `Beat: ${beatName || beatId}\nBeatId: ${beatId}\n` +
-        `DropDate: ${dropDate || (dropLabel ? new Date(dropLabel).toUTCString() : "")}\n` +
+        `BEFORE IT DROPS — SUBSCRIBED\n` +
+        `Beat: UPCOMING BEAT — NAME REVEALED AT DROP\n` +
+        `DropDate: ${dropDate}\n` +
         `Status: SUBSCRIBED — WE'LL EMAIL YOU THE MOMENT THIS BEAT DROPS\n` +
-        `Date: ${new Date().toUTCString()}`
+        `Date: ${ts}`,
+      html: notificationHtml({
+        eyebrow: "BEAT DROP NOTIFICATION",
+        title: "SUBSCRIPTION CONFIRMED",
+        subtitle: "UPCOMING BEAT",
+        rows: [
+          ["Beat", "UPCOMING — NAME REVEALED AT DROP"],
+          ["Drop Date", dropDate === "—" ? "—" : esc(dropDate)],
+          ["Status", "SUBSCRIBED — WE'LL EMAIL YOU THE MOMENT THIS BEAT DROPS"],
+          ["Date", esc(ts)]
+        ]
+      })
     });
 
     return json(env, { ok: true, subscribed: true, beatId, added, count: emails.length });
@@ -636,18 +721,31 @@ async function handleNotifyDrop(request, env) {
   const alreadyNotified = (await env.ORDERS.get(notifiedKey(beatId))) === "1";
   if (alreadyNotified) return json(env, { ok: true, beatId, notified: 0, already: true });
 
-  const beatName = body && (body.beatName || beatId);
+  const beatLabel = body && (body.beatName || beatId);
   let sent = 0;
   for (const email of emails) {
     try {
+      const ts = new Date().toUTCString();
       await sendEmail(env, {
         to: email,
-        subject: `${beatName || beatId} IS NOW AVAILABLE — GRAB IT BEFORE THE LEASES SELL OUT`,
+        subject: `${beatLabel} IS NOW AVAILABLE — GRAB IT BEFORE THE LEASES SELL OUT`,
         text:
-          `${beatName || beatId} IS NOW AVAILABLE — GRAB IT BEFORE THE LEASES SELL OUT\n` +
-          `Beat: ${beatName || beatId}\nBeatId: ${beatId}\n` +
+          `${beatLabel} IS NOW AVAILABLE — GRAB IT BEFORE THE LEASES SELL OUT\n` +
+          `Beat: ${beatLabel}\nBeatId: ${beatId}\n` +
           `Status: BEAT IS LIVE — LEASE NOW (pick 2, get 1 free)\n` +
-          `Date: ${new Date().toUTCString()}`
+          `Date: ${ts}`,
+        html: notificationHtml({
+          eyebrow: "BEAT DROP",
+          title: "NOW AVAILABLE",
+          subtitle: beatLabel,
+          rows: [
+            ["Beat Name", esc(beatLabel)],
+            ["Beat ID", esc(beatId)],
+            ["Status", "BEAT IS LIVE — LEASE NOW (PICK 2, GET 1 FREE)"],
+            ["Date", esc(ts)]
+          ],
+          cta: { label: "LEASE NOW", url: SITE_URL }
+        })
       });
       sent++;
     } catch (err) {
