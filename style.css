@@ -436,6 +436,10 @@ button {
   min-width: 0;
   white-space: normal;
   line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .card__youtube-link {
@@ -459,6 +463,8 @@ button {
 .card__meta {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .card__name-alt {
@@ -486,7 +492,8 @@ button {
 }
 
 .card__stockrow {
-  margin-top: 8px;
+  margin-top: auto;
+  padding-top: 8px;
 }
 
 .card__stock {
@@ -1372,8 +1379,10 @@ button {
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   }
   .card__info {
-    flex-wrap: wrap;
     padding: 12px;
+  }
+  .card__name > span {
+    min-height: 2.6em;
   }
   .cart-items li {
     flex-wrap: wrap;
