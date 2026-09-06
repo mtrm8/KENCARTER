@@ -2,6 +2,12 @@ name = "kencarter-checkout"
 main = "src/index.js"
 compatibility_date = "2026-08-01"
 
+# Pinned so `wrangler deploy` never asks to choose an account.
+account_id = "d864c01391fbf4d2dc1946af3cf7dd80"
+
+# Deploy to *.workers.dev (no route prompt).
+workers_dev = true
+
 # Orders registry (payment_id ↔ order, release state). Create once:
 #   npx wrangler kv namespace create ORDERS   → paste the returned id below
 [[kv_namespaces]]

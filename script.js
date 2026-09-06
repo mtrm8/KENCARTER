@@ -504,7 +504,7 @@ function cardInner(beat, opts = {}, index = 0) {
            <button type="button" class="beat-alert-subscribed-btn" disabled>NOTIFICATIONS ON</button>
            <span class="beat-alert-email">${savedEmail}</span>
          </div>`
-      : `<form class="beat-alert-form" data-beat-id="${beat.id}" data-beat-name="${beat.name || beat.title}">
+      : `<form class="beat-alert-form" data-beat-id="${beat.id}" data-beat-name="${beat.name || beat.title}" data-beat-release="${beat.releaseAt || ""}">
            <input type="email" class="beat-alert-input" placeholder="YOU@EMAIL.COM" required>
            <button type="submit" class="beat-alert-btn">GET NOTIFIED</button>
          </form>`;
@@ -1483,6 +1483,7 @@ grid.addEventListener("submit", async (e) => {
   const input = form.querySelector(".beat-alert-input");
   const beatId = form.dataset.beatId;
   const beatName = form.dataset.beatName || beatId;
+  const dropDate = form.dataset.beatRelease || "";
   const email = input ? input.value.trim() : "";
 
   if (!EMAIL_RE.test(email)) {
@@ -1500,7 +1501,7 @@ grid.addEventListener("submit", async (e) => {
   try {
     await workerRequest("/api/notify-beat", {
       method: "POST",
-      body: JSON.stringify({ beatId, beatName, email })
+      body: JSON.stringify({ beatId, beatName, email, dropDate })
     });
     try {
       localStorage.setItem("kencarter_beat_alert_" + beatId, email);

@@ -59,7 +59,8 @@ const mock = {
   payments: [],
   calls: { np: [], resend: [] },
   minAmount: 1,
-  estimateUsd: 1
+  estimateUsd: 1,
+  resendFail: false
 };
 
 const BEAT_LINKS = JSON.stringify({
@@ -117,6 +118,7 @@ globalThis.fetch = async (ful, opts = {}) => {
   if (u.startsWith(RESEND_API)) {
     mock.calls.resend.push(u);
     mock.emails.push(JSON.parse(opts.body || "{}"));
+    if (mock.resendFail) return j({ message: "simulated resend failure" }, 500);
     return j({ id: "email_" + (+mock.paySeq + 1) }, 200);
   }
   throw new Error("UNEXPECTED MOCKED FETCH: " + u);
@@ -180,6 +182,7 @@ fCheck(/a\.href = "EXCLUSIVE_LICENSE\.txt"/.test(script), "exclusive orders get 
 fCheck(/a\.href = "LICENSE\.txt"/.test(script), "lease orders get LICENSE.txt download link");
 fCheck(/@media/.test(style), "responsive breakpoints defined");
 fCheck(/flex-direction:\s*column/.test(script) || /\.card__actions\s*\{[^}]*flex-direction:\s*column/.test(style), "card buttons stack (no clipping)");
+fCheck(/\{ beatId, beatName, email, dropDate \}/.test(script), "notify-beat payload includes dropDate");
 
 // ───────────────────────────────────────────────────────────────────────────
 // B. Worker HMAC signature verification
@@ -423,6 +426,38 @@ check(mock.emails.length === emailsBeforeDrop + 2, "exactly 2 drop emails sent f
 
 r = await api("/api/notify-drop", { method: "POST", body: { beatId: "s2-beat9" } });
 check(r.res.status === 200 && r.data.notified === 0, "notify-drop with no subscribers is a no-op");
+
+// ───────────────────────────────────────────────────────────────────────────
+// G. Pre-drop parsing & Resend resilience (no unhandled exceptions)
+// ───────────────────────────────────────────────────────────────────────────
+r = await api("/api/notify-beat", { method: "POST", body: "not-json" });
+check(r.res.status === 400 && r.data.error === "INVALID JSON", "notify-beat invalid/missing JSON body → 400 JSON (no crash)");
+
+const seedCount = mock.emails.length;
+r = await api("/api/notify-beat", { method: "POST", body: { beatId: "s2-beat9", email: "fan2@example.com", dropLabel: "not-a-date" } });
+check(r.res.status === 200 && r.data.ok && r.data.email_ok === true, "notify-beat survives malformed dropLabel (UTC-guarded, no RangeError)");
+check(r.data.count === 1 && r.data.added === true && r.data.dropDate === undefined, "malformed dropLabel omitted from stored response");
+check(mock.emails.length === seedCount + 1, "malformed dropLabel still sends confirmation email");
+const badDateEmail = mock.emails[mock.emails.length - 1];
+check((badDateEmail.text || "").includes("DropDate: —"), "email shows — when drop date is unparseable");
+
+// Valid alternate field name (dropDate) is accepted.
+r = await api("/api/notify-beat", { method: "POST", body: { beatId: "s2-beat10", email: "fan3@example.com", dropDate: "2026-10-01T17:00:00Z" } });
+check(r.res.status === 200 && /1 Oct 2026/.test(mock.emails[mock.emails.length - 1].text || ""), "dropDate field parsed into confirmation email");
+
+// Resend outage must not fail the subscription (best-effort confirmation).
+mock.resendFail = true;
+r = await api("/api/notify-beat", { method: "POST", body: { beatId: "s2-beat11", email: "fan4@example.com" } });
+check(r.res.status === 200 && r.data.ok && r.data.subscribed && r.data.email_ok === false, "Resend failure → subscription still succeeds (200 + email_ok:false)");
+const storedSub = JSON.parse((await kv.get("notify-sub:s2-beat11")) || "[]");
+check(storedSub.length === 1 && storedSub[0] === "fan4@example.com", "subscription persisted despite Resend outage");
+mock.resendFail = false;
+
+r = await api("/api/notify-beat", { method: "POST", body: { beatName: "Nameless", email: "a@b.co" } });
+check(r.res.status === 400 && r.data.error === "MISSING BEAT", "notify-beat missing beatId → 400");
+
+r = await api("/api/notify-beat", { method: "POST", body: { beatId: "s2-beat12", email: "" } });
+check(r.res.status === 400 && r.data.error === "INVALID EMAIL", "notify-beat missing email → 400");
 
 // ───────────────────────────────────────────────────────────────────────────
 // Summary

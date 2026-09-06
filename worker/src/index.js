@@ -215,6 +215,13 @@ const esc = (s) =>
 
 const money = (n) => "$" + Number(n).toFixed(2);
 
+// Safe UTC formatter — never throws on missing/unparseable input (returns "").
+const utcOf = (v) => {
+  if (!v) return "";
+  const t = new Date(v).getTime();
+  return Number.isInteger(t) ? new Date(t).toUTCString() : "";
+};
+
 function deliveryHtml(rec, links) {
   const rows =
     `<tr><td style="padding:7px 0;font-size:11px;color:#888888;">ITEMS</td>` +
@@ -611,7 +618,7 @@ async function handleCheckout(request, env) {
 
 async function handleNotifyClosure(request, env) {
   const body = await request.json().catch(() => null);
-  const { season, email } = body || {};
+  const { season, email } = body && typeof body === "object" ? body : {};
   if (!email || !EMAIL_RE.test(email)) return json(env, { error: "INVALID EMAIL" }, 400);
 
   try {
@@ -642,10 +649,16 @@ async function handleNotifyClosure(request, env) {
 // notify-sub:<beatId> and emails a confirmation. Nothing order-related here.
 async function handleNotifyBeat(request, env) {
   const body = await request.json().catch(() => null);
-  const { beatId, email, dropDate, dropLabel } = body || {};
+  if (!body || typeof body !== "object") return json(env, { error: "INVALID JSON" }, 400);
+
+  const beatId = String(body.beatId || "").trim();
+  const email = String(body.email || "").trim();
 
   if (!beatId) return json(env, { error: "MISSING BEAT" }, 400);
   if (!email || !EMAIL_RE.test(email)) return json(env, { error: "INVALID EMAIL" }, 400);
+
+  const dropDate = utcOf(body.dropDate || body.dropLabel); // "" if absent/unparseable
+  const ts = new Date().toUTCString();
 
   try {
     // Dedupe subscriptions per beat (a user may watch several beats).
@@ -656,44 +669,46 @@ async function handleNotifyBeat(request, env) {
     } catch {
       emails = [];
     }
-    const lower = String(email).trim().toLowerCase();
+    const lower = email.toLowerCase();
     let added = false;
     if (!emails.some((e) => String(e).toLowerCase() === lower)) {
-      emails.push(String(email).trim());
+      emails.push(email);
       added = true;
       // Persist for ~3 months (covers the whole season's drop window).
       await env.ORDERS.put(notifyKey(beatId), JSON.stringify(emails), { expirationTtl: 60 * 60 * 24 * 90 });
     }
 
-    const dropDate =
-      dropDate ||
-      (dropLabel ? new Date(dropLabel).toUTCString() : undefined) ||
-      "—";
-    const ts = new Date().toUTCString();
-    const subject = "BEAT DROP NOTIFICATION SIGNUP — UPCOMING BEAT";
-    await sendEmail(env, {
-      to: String(email).trim(),
-      subject,
-      text:
-        `BEFORE IT DROPS — SUBSCRIBED\n` +
-        `Beat: UPCOMING BEAT — NAME REVEALED AT DROP\n` +
-        `DropDate: ${dropDate}\n` +
-        `Status: SUBSCRIBED — WE'LL EMAIL YOU THE MOMENT THIS BEAT DROPS\n` +
-        `Date: ${ts}`,
-      html: notificationHtml({
-        eyebrow: "BEAT DROP NOTIFICATION",
-        title: "SUBSCRIPTION CONFIRMED",
-        subtitle: "UPCOMING BEAT",
-        rows: [
-          ["Beat", "UPCOMING — NAME REVEALED AT DROP"],
-          ["Drop Date", dropDate === "—" ? "—" : esc(dropDate)],
-          ["Status", "SUBSCRIBED — WE'LL EMAIL YOU THE MOMENT THIS BEAT DROPS"],
-          ["Date", esc(ts)]
-        ]
-      })
-    });
+    // Confirmation email is best-effort: a Resend outage/rate-limit must not
+    // turn a successfully-stored subscription into an error in the UI.
+    let email_ok = true;
+    try {
+      await sendEmail(env, {
+        to: email,
+        subject: "BEAT DROP NOTIFICATION SIGNUP — UPCOMING BEAT",
+        text:
+          `BEFORE IT DROPS — SUBSCRIBED\n` +
+          `Beat: UPCOMING BEAT — NAME REVEALED AT DROP\n` +
+          `DropDate: ${dropDate || "—"}\n` +
+          `Status: SUBSCRIBED — WE'LL EMAIL YOU THE MOMENT THIS BEAT DROPS\n` +
+          `Date: ${ts}`,
+        html: notificationHtml({
+          eyebrow: "BEAT DROP NOTIFICATION",
+          title: "SUBSCRIPTION CONFIRMED",
+          subtitle: "UPCOMING BEAT",
+          rows: [
+            ["Beat", "UPCOMING — NAME REVEALED AT DROP"],
+            ["Drop Date", dropDate ? esc(dropDate) : "—"],
+            ["Status", "SUBSCRIBED — WE'LL EMAIL YOU THE MOMENT THIS BEAT DROPS"],
+            ["Date", esc(ts)]
+          ]
+        })
+      });
+    } catch (err) {
+      console.error("Beat-notify confirmation email failed:", err.message);
+      email_ok = false;
+    }
 
-    return json(env, { ok: true, subscribed: true, beatId, added, count: emails.length });
+    return json(env, { ok: true, subscribed: true, beatId, added, count: emails.length, email_ok });
   } catch (err) {
     console.error("Beat-notify signup error:", err);
     return json(env, { error: "SIGNUP FAILED" }, 500);
@@ -705,7 +720,9 @@ async function handleNotifyBeat(request, env) {
 // /api/notify-drop) or via the scheduled cron when a scheduled drop goes live.
 async function handleNotifyDrop(request, env) {
   const body = await request.json().catch(() => null);
-  const beatId = body && body.beatId;
+  if (!body || typeof body !== "object") return json(env, { error: "INVALID JSON" }, 400);
+
+  const beatId = String(body.beatId || "").trim();
   if (!beatId) return json(env, { error: "MISSING BEAT" }, 400);
 
   const subsRaw = (await env.ORDERS.get(notifyKey(beatId))) || "[]";
