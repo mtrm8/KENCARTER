@@ -1510,7 +1510,7 @@ grid.addEventListener("submit", async (e) => {
     }
     buildGrid();
     render();
-    alert("You\u2019re in! We\u2019ll email you the moment " + beatName + " drops.");
+    alert("You\u2019re in! We\u2019ll email you the moment it drops.");
   } catch (err) {
     console.error("Beat-notify error:", err);
     alert("Something went wrong. Please try again.");
