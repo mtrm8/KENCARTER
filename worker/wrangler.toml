@@ -20,6 +20,9 @@ id = "8283af4c27774baea53f34f615be0410"
 # Only needed if the webhook URL differs from this worker's own /api/ipn:
 # IPN_CALLBACK_URL = "https://<your-worker-host>/api/ipn"
 
-# Fires beat-drop notifications shortly after each scheduled drop time.
+# Fully automated beat releases: the cron wakes the worker every 15 minutes
+# and notifyDueDrops() fires each beat's subscribers the moment its releaseAt
+# (from BEAT_CATALOG in src/index.js) has passed. KV flags dedupe send-by-beat
+# and send-by-email, so there is NO manual cron, URL ping, or push required.
 [triggers]
-crons = ["0 */6 * * *"]
+crons = ["*/15 * * * *"]

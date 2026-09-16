@@ -16,14 +16,24 @@
  *                                 releases links + emails them on 'finished'
  *   POST /api/notify-beat         per-beat "notify me when it drops" signup
  *   POST /api/notify-drop         email a beat's subscribers that it is now live
+ *   POST /api/release             secure broadcast — new beat release to all subscribers
+ *                                 (requires Authorization: Bearer <DISPATCH_SECRET>)
+ *   GET  /api/release?secret=…     same trigger via query param (manual/instant only)
+ *   scheduled                     cron → notifyDueDrops() automates beat releases
+ *                                 straight from BEAT_CATALOG.releaseAt timers; no
+ *                                 manual cron/URL upkeep (see wrangler.toml [triggers])
  *
  * Secrets (wrangler secret put …):
  *   NOWPAYMENTS_API_KEY     payments API key
  *   NOWPAYMENTS_IPN_SECRET  IPN signing secret (dashboard → IPN settings)
  *   RESEND_API_KEY          transaction email API key (free tier: 3k/mo)
  *   RESEND_FROM             verified sender, e.g. "KEN CARTER <noreply@…>"
+ *   DISPATCH_SECRET         shared secret for /api/release (optional — a hardcoded
+ *                           fallback "kencarter-release-2026!" is also accepted)
  *   BEAT_LINKS              JSON: { "beat1": "https://drive…", … }
- *   BEAT_DROPS              JSON: { "beatId": "ISO drop time", … } (cron)
+ *   BEAT_DROPS              JSON: { "beatId": "ISO drop time", … } — OPTIONAL.
+ *                           Overrides/reschedules the BEAT_CATALOG releaseAt
+ *                           timers that otherwise drive the automated drops.
  *
  * Bindings: KV namespace "ORDERS" (see wrangler.toml).
  */
@@ -36,6 +46,11 @@ const SITE_URL = "https://www.kencarter.abrdns.com";
 
 const KEN_MINT = "HEFkC6WQo3jTv39B6JhYQJ3ZW8xKxRELaWdnirdSpump";
 const MERCHANT_SOL_ADDRESS = "U8rFsuwmY5bXftVwmJt43VYApgFE6MbEhZbUcXwamnS";
+
+// Hardcoded accepted secret for /api/release. This guarantees the release
+// endpoint keeps working even if the DISPATCH_SECRET env binding is missing,
+// out of sync, or reloaded. The env binding (if set) is ALSO accepted.
+const FALLBACK_DISPATCH_SECRET = "kencarter-release-2026!";
 
 const COIN_CODES = {
   USDT: "usdtsol",
@@ -66,7 +81,9 @@ const json = (env, obj, status = 200) =>
 const orderKey = (id) => "order:" + id;
 const ttl = () => ({ expirationTtl: 60 * 60 * 24 * 7 });
 const notifyKey = (beatId) => "notify-sub:" + beatId;      // subscribed emails per beat
-const notifiedKey = (beatId) => "notify-sent:" + beatId;   // drop notifications already sent
+const notifiedKey = (beatId) => "notify-sent:" + beatId;   // drop notifications already sent (beat-level flag)
+const notifiedEmailKey = (beatId, email) =>                 // per-email dedup key
+  `notify-sent:${beatId}:${email.toLowerCase()}`;
 
 function beatLinks(env) {
   try {
@@ -74,6 +91,60 @@ function beatLinks(env) {
   } catch {
     return {};
   }
+}
+
+// ── Beat catalog (mirrors script.js) ───────────────────────────────────
+// Kept in sync with the storefront definition so release / notify emails
+// include real titles, BPM, key, and YouTube previews, and so
+// the automated drop schedule (releaseAt) needs NO manual cron or secret.
+const BEAT_CATALOG = {
+  // ── Season 01 ──
+  beat1: { title: "BEAT 01", name: "CH$\u00a3$$",        bpm: 140, key: "E MIN",  tag: "SEASON 01", youtube: "https://youtu.be/EtIy63bCyEc" },
+  beat2: { title: "BEAT 02", name: "AnGeLL",             bpm: 75,  key: "G# MIN", tag: "SEASON 01", youtube: "https://youtu.be/Y4CY1Qb4e4s" },
+  beat3: { title: "BEAT 03", name: "DIAMONS IN THE BAG", bpm: 130, key: "A# MIN", tag: "SEASON 01", youtube: "https://youtu.be/orkevqUH0bM" },
+  beat4: { title: "BEAT 04", name: "$$$",                bpm: 140, key: "G MIN",  tag: "SEASON 01", youtube: "https://youtu.be/bRudvWoy7RY" },
+  beat5: { title: "BEAT 05", name: "HIGH VIEW",          bpm: 168, key: "C MIN",  tag: "SEASON 01", youtube: "https://youtu.be/12qPZNM2fe0" },
+  beat6: { title: "BEAT 06", name: "PROTOCOL",           bpm: 135, key: "G# MIN", tag: "SEASON 01", youtube: "https://youtu.be/xk_SSDX4vZE" },
+  beat7: { title: "BEAT 07", name: "LAST SEAT",          bpm: 140, key: "G# MIN", tag: "SEASON 01", releaseAt: "2026-08-23T17:00:00Z", youtube: "https://youtu.be/p7vyAIsWKQw" },
+  // ── Season 02 ──
+  "s2-beat1": { title: "BEAT 01", name: "ART",           bpm: 126, key: "C# MIN", tag: "SEASON 02", releaseAt: "2026-09-01T17:00:00Z", youtube: "https://youtu.be/LeARirM_bl0" },
+  "s2-beat2": { title: "BEAT 02", name: "Take the CROW", bpm: 130, key: "D# MIN", tag: "SEASON 02", releaseAt: "2026-09-05T17:00:00Z", youtube: "https://youtu.be/ZptaYX0g8uU" },
+  "s2-beat3": { title: "BEAT 03", name: "Late Night",     bpm: 138, key: "E MIN",  tag: "SEASON 02", releaseAt: "2026-09-09T17:00:00Z", youtube: "https://youtu.be/EpV_G80aKQU" },
+  "s2-beat4": { title: "BEAT 04", name: "Antinous",       bpm: 130, key: "F MIN",  tag: "SEASON 02", releaseAt: "2026-09-13T17:00:00Z", youtube: "https://youtu.be/PD4qibTpR_s" },
+  "s2-beat5": { title: "BEAT 05", name: "4 AM",           bpm: 166, key: "F# MIN", tag: "SEASON 02", releaseAt: "2026-09-17T17:00:00Z", youtube: "https://youtu.be/alA-itPRkt4" },
+  "s2-beat6": { title: "BEAT 06", name: "White",          bpm: 119, key: "B MIN",  tag: "SEASON 02", releaseAt: "2026-09-21T17:00:00Z", youtube: "https://youtu.be/nl2M-EaCrrk" },
+  "s2-beat7": { title: "BEAT 07", name: "Rewind",         bpm: 132, key: "G MIN",  tag: "SEASON 02", releaseAt: "2026-09-25T17:00:00Z", youtube: "https://youtu.be/WZLsWpzFJAs" }
+};
+
+function lookupBeat(beatId) {
+  return BEAT_CATALOG[beatId] || null;
+}
+
+// Resolve a beatId to its display label + catalog details for emails.
+//   "Late Night — BEAT 03 | SEASON 02"
+// Falls back to the formatted id when the beat is not in the catalog, so
+// unknown/upcoming beats still produce a sensible personalization.
+function describeBeat(bId) {
+  const label = formatBeatId(bId);
+  const entry = lookupBeat(bId) || {};
+  const name = entry.name || label;
+  const title = entry.title && entry.tag ? `${entry.title} | ${entry.tag}` : label;
+  return {
+    label,
+    name,
+    title,
+    display: name !== label ? `${name} — ${title}` : title,
+    bpm: entry.bpm,
+    key: entry.key,
+    youtube: entry.youtube
+  };
+}
+
+// Inline anchor for a row value inside notificationHtml (values are raw HTML).
+function linkHtml(href, text) {
+  return href
+    ? `<a href="${esc(href)}" target="_blank" rel="noopener" style="color:#f2f2f2;font-weight:600;text-decoration:underline;">${esc(text)} →</a>`
+    : "<span style=\"color:#555555;\">—</span>";
 }
 
 async function np(env, path, method, body) {
@@ -204,6 +275,22 @@ export async function verifyIpnSignature(ipnSecret, rawBody, signature) {
     }
   }
   return false;
+}
+
+// Parse a beat ID like "s2-beat3" or "beat5" into a clean display label.
+//   "s2-beat3"  → "BEAT 03 | SEASON 02"
+//   "beat5"     → "BEAT 05 | SEASON 01"
+//   anything else → uppercased as-is (fallback)
+function formatBeatId(raw) {
+  const s = String(raw || "").trim();
+  // Season-prefixed: s<season>-beat<number>
+  let m = s.match(/^s(\d+)-beat(\d+)$/i);
+  if (m) return `BEAT ${m[2].padStart(2, "0")} | SEASON ${m[1].padStart(2, "0")}`;
+  // Bare: beat<number> (season 01)
+  m = s.match(/^beat(\d+)$/i);
+  if (m) return `BEAT ${m[1].padStart(2, "0")} | SEASON 01`;
+  // Fallback: return uppercased original
+  return s.toUpperCase() || "NEW BEAT";
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -715,6 +802,229 @@ async function handleNotifyBeat(request, env) {
   }
 }
 
+// Defensive percent-decoding: searchParams already decodes, but this guards
+// against a value that arrives still-encoded (e.g. a tool that double-encodes).
+const tryDecode = (s) => {
+  if (typeof s !== "string" || !s.includes("%")) return s;
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
+};
+
+// Normalize a secret for tolerant-but-safe comparison: trim whitespace and
+// ignore ONE trailing "!" so that both "…2026" and "…2026!" authenticate,
+// regardless of how a cron/browser tool encoded it (bash history expansion or
+// a URL shortener often mangles a trailing "!").
+function normalizeSecret(s) {
+  let out = String(s || "").trim();
+  if (out.endsWith("!")) out = out.slice(0, -1).trim();
+  return out;
+}
+
+// Timing-safe comparison for the shared dispatch secret (constant-time hash
+// compare — avoids leaking the secret via response timing).
+async function secretMatches(secret, provided) {
+  const a = normalizeSecret(tryDecode(secret));
+  const b = normalizeSecret(tryDecode(provided));
+  if (!a || !b || a.length < 8) return false;
+  const enc = new TextEncoder();
+  const ha = await crypto.subtle.digest("SHA-256", enc.encode(a));
+  const hb = await crypto.subtle.digest("SHA-256", enc.encode(b));
+  const ab = new Uint8Array(ha);
+  const bb = new Uint8Array(hb);
+  let diff = 0;
+  for (let i = 0; i < ab.length; i++) diff |= ab[i] ^ bb[i];
+  return diff === 0;
+}
+
+// Secure endpoint: broadcast a new-beat release to ALL subscribers across every
+// beat, or to a specific beat's subscribers when `beatId` is provided.
+// Authenticated by DISPATCH_SECRET — either a Bearer token (Authorization
+// header) or a ?secret= query parameter, with the same value.
+//   POST /api/release                  JSON body (requires Bearer header)
+//   GET  /api/release?secret=…&beatId=…  quick browser/cron trigger
+//   &force=true                        bypass the per-beat dedup (resend + re-mark)
+async function handleReleaseBeat(request, env) {
+  // Guards: never crash on a broken deployment. Missing bindings or a bad URL
+  // must surface as clear JSON errors instead of a raw TypeError.
+  if (!env.ORDERS || typeof env.ORDERS.get !== "function") {
+    return json(env, { error: "ORDERS KV BINDING NOT CONFIGURED" }, 500);
+  }
+  let url;
+  try {
+    url = new URL(request.url);
+  } catch {
+    return json(env, { error: "BAD URL" }, 400);
+  }
+
+  // --- 1. Authenticate (Bearer header OR ?secret= query param) ---
+  const auth = request.headers.get("Authorization") || "";
+  const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  const querySecret = (url.searchParams.get("secret") || "").trim();
+  const provided = bearer || querySecret;
+  const accepted =
+    (await secretMatches(env.DISPATCH_SECRET, provided)) ||
+    (await secretMatches(FALLBACK_DISPATCH_SECRET, provided));
+  if (!accepted) {
+    return json(env, { error: "UNAUTHORIZED" }, 401);
+  }
+
+  // --- 2. Inputs: from JSON body (POST) or query params (GET) ---
+  let beatId = "", beatName = "", ctaUrl = SITE_URL, force = false;
+  if (request.method === "GET") {
+    beatId = (url.searchParams.get("beatId") || "").trim();
+    beatName = formatBeatId(
+      (url.searchParams.get("beatName") || url.searchParams.get("beatId") || "").trim()
+    );
+    ctaUrl = (url.searchParams.get("url") || SITE_URL).trim();
+    force = /^(1|true|yes|y|on)$/i.test((url.searchParams.get("force") || "").trim());
+  } else {
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return json(env, { error: "INVALID JSON" }, 400);
+    }
+    beatId = String(body.beatId || "").trim();
+    beatName = formatBeatId(String(body.beatName || body.beatId || "").trim());
+    ctaUrl = String(body.url || SITE_URL).trim();
+    force = /^(1|true|yes|y|on)$/i.test(String(body.force || "").trim());
+  }
+
+  // --- 2. Gather subscribers ---
+  let subscriberMap = {}; // { beatId: [email, …] }
+
+  if (beatId) {
+    // Target a single beat's subscribers.
+    const raw = (await env.ORDERS.get(notifyKey(beatId))) || "[]";
+    try {
+      const emails = JSON.parse(raw);
+      if (Array.isArray(emails) && emails.length) subscriberMap[beatId] = emails;
+    } catch { /* empty */ }
+  } else {
+    // Sweep ALL notify-sub:* keys from KV to reach every subscriber list.
+    let cursor;
+    do {
+      const listing = await env.ORDERS.list({ prefix: "notify-sub:", cursor });
+      for (const key of listing.keys) {
+        const id = key.name.replace("notify-sub:", "");
+        const raw = (await env.ORDERS.get(key.name)) || "[]";
+        try {
+          const emails = JSON.parse(raw);
+          if (Array.isArray(emails) && emails.length) subscriberMap[id] = emails;
+        } catch { /* skip corrupt key */ }
+      }
+      cursor = listing.cursor;
+    } while (cursor);
+  }
+
+  const totalTargets = Object.values(subscriberMap).reduce((n, arr) => n + arr.length, 0);
+  if (totalTargets === 0) return json(env, { ok: true, beatId, notified: 0, reason: "NO SUBSCRIBERS" });
+
+  // Preflight the email provider config so a missing secret surfaces as ONE
+  // clear error instead of a per-recipient failure list.
+  const missingResend = [];
+  if (!env.RESEND_API_KEY) missingResend.push("RESEND_API_KEY");
+  if (!env.RESEND_FROM) missingResend.push("RESEND_FROM");
+  if (missingResend.length) {
+    return json(env, { error: "EMAIL NOT CONFIGURED — MISSING SECRET(S): " + missingResend.join(", ") }, 500);
+  }
+
+  // --- 3. Send emails ---
+  const ts = new Date().toUTCString();
+  // Resolve real catalog details for the reported beat id (fallbacks when
+  // __ALL__ or unknown), used for the API response.
+  const mainInfo = describeBeat(beatId || "__ALL__");
+  let sent = 0;
+  let skipped = 0;
+  const errors = [];
+
+  for (const [bId, emails] of Object.entries(subscriberMap)) {
+    // Fetch the real beat details (name, BPM, key, preview links) so every
+    // email is personalized instead of using generic fallback text.
+    const info = describeBeat(bId);
+    // Honor an explicit name for the requested beat; catalog otherwise.
+    const name =
+      bId === beatId && beatName !== formatBeatId(beatId)
+        ? beatName
+        : info.name;
+    const display = name === info.name ? info.display : `${name} — ${info.title}`;
+
+    // Dedup gate: skip beats already notified (unless &force=true bypasses it).
+    const alreadyNotified =
+      (typeof env.ORDERS.get === "function") &&
+      (await env.ORDERS.get(notifiedKey(bId))) === "1";
+    if (alreadyNotified && !force) {
+      skipped++;
+      continue;
+    }
+
+    const bpm = info.bpm != null ? `${info.bpm} BPM` : "—";
+    const keyLabel = info.key || "—";
+
+    for (const email of emails) {
+      // Per-email dedup: never send the same beatId twice to the same
+      // address, even when force=true or cron fires multiple times.
+      const emailKey = notifiedEmailKey(bId, email);
+      const alreadyEmailed = (await env.ORDERS.get(emailKey)) === "1";
+      if (alreadyEmailed) continue;
+
+      try {
+        await sendEmail(env, {
+          to: email,
+          subject: `${display} IS NOW AVAILABLE — GRAB IT BEFORE THE LEASES SELL OUT`,
+          text:
+            `${display} IS NOW AVAILABLE — GRAB IT BEFORE THE LEASES SELL OUT\n` +
+            `Beat: ${info.name}\nBeatId: ${bId}\n` +
+            `BPM: ${bpm}\nKey: ${info.key || "—"}\n` +
+            `Preview: ${info.youtube || "—"}\n` +
+            `Status: BEAT IS LIVE — LEASE NOW (pick 2, get 1 free)\n` +
+            `Date: ${ts}`,
+          html: notificationHtml({
+            eyebrow: "BEAT DROP",
+            title: "NOW AVAILABLE",
+            subtitle: display,
+            rows: [
+              ["Beat Name", name === info.name ? esc(info.name) : esc(name)],
+              ["Beat ID", esc(bId)],
+              ["BPM", esc(bpm)],
+              ["Key", esc(keyLabel)],
+              ["Preview", info.youtube ? linkHtml(info.youtube, "LISTEN ON YOUTUBE") : "—"],
+              ["Status", "BEAT IS LIVE — LEASE NOW (PICK 2, GET 1 FREE)"],
+              ["Date", esc(ts)]
+            ],
+            cta: { label: "LEASE NOW", url: ctaUrl }
+          })
+        });
+        sent++;
+        // Mark this specific (beatId, email) pair as sent.
+        await env.ORDERS.put(emailKey, "1", { expirationTtl: 60 * 60 * 24 * 90 });
+      } catch (err) {
+        console.error("Release-broadcast failed for", email, err.message);
+        errors.push({ email, error: String(err.message || err) });
+      }
+    }
+
+    // Beat-level flag: allows fast-skipping the entire beat when all emails
+    // have been sent (covers the common non-force path).
+    if (sent > 0) {
+      await env.ORDERS.put(notifiedKey(bId), "1", { expirationTtl: 60 * 60 * 24 * 90 });
+    }
+  }
+
+  return json(env, {
+    ok: true,
+    beatId: beatId || "__ALL__",
+    beatName,
+    ...(beatId ? { title: mainInfo.title, name: mainInfo.name } : {}),
+    totalTargets,
+    notified: sent,
+    skipped,
+    forced: force,
+    errors: errors.length ? errors : undefined
+  });
+}
+
 // Emails every subscriber of a beat that it is now available, exactly once per
 // beat (tracked by notify-sent:<beatId>). Can be invoked directly (POST
 // /api/notify-drop) or via the scheduled cron when a scheduled drop goes live.
@@ -738,9 +1048,24 @@ async function handleNotifyDrop(request, env) {
   const alreadyNotified = (await env.ORDERS.get(notifiedKey(beatId))) === "1";
   if (alreadyNotified) return json(env, { ok: true, beatId, notified: 0, already: true });
 
-  const beatLabel = body && (body.beatName || beatId);
+  // Resolve the real catalog details so the email is personalized. A caller
+// may override the name, but never with a raw beatId (which is just the
+// scheduler's/URL's stand-in and would clobber the lookup).
+  const info = describeBeat(beatId);
+  const requestedName =
+    body && typeof body.beatName === "string" ? body.beatName.trim() : "";
+  const name =
+    requestedName && requestedName !== beatId ? requestedName : info.name;
+  const beatLabel = name === info.name ? info.display : `${name} — ${info.title}`;
+  const bpm = info.bpm != null ? `${info.bpm} BPM` : "—";
+  const keyLabel = info.key || "—";
   let sent = 0;
   for (const email of emails) {
+    // Per-email dedup: never send the same beatId twice to the same address.
+    const emailKey = notifiedEmailKey(beatId, email);
+    const alreadyEmailed = (await env.ORDERS.get(emailKey)) === "1";
+    if (alreadyEmailed) continue;
+
     try {
       const ts = new Date().toUTCString();
       await sendEmail(env, {
@@ -748,16 +1073,21 @@ async function handleNotifyDrop(request, env) {
         subject: `${beatLabel} IS NOW AVAILABLE — GRAB IT BEFORE THE LEASES SELL OUT`,
         text:
           `${beatLabel} IS NOW AVAILABLE — GRAB IT BEFORE THE LEASES SELL OUT\n` +
-          `Beat: ${beatLabel}\nBeatId: ${beatId}\n` +
-          `Status: BEAT IS LIVE — LEASE NOW (pick 2, get 1 free)\n` +
-          `Date: ${ts}`,
+          `Beat: ${info.name}\nBeatId: ${beatId}\n` +
+`BPM: ${bpm}\nKey: ${keyLabel}\n` +
+            `Preview: ${info.youtube || "—"}\n` +
+            `Status: BEAT IS LIVE — LEASE NOW (pick 2, get 1 free)\n` +
+            `Date: ${ts}`,
         html: notificationHtml({
           eyebrow: "BEAT DROP",
           title: "NOW AVAILABLE",
           subtitle: beatLabel,
           rows: [
-            ["Beat Name", esc(beatLabel)],
+            ["Beat Name", esc(name)],
             ["Beat ID", esc(beatId)],
+            ["BPM", esc(bpm)],
+            ["Key", esc(keyLabel)],
+            ["Preview", info.youtube ? linkHtml(info.youtube, "LISTEN ON YOUTUBE") : "—"],
             ["Status", "BEAT IS LIVE — LEASE NOW (PICK 2, GET 1 FREE)"],
             ["Date", esc(ts)]
           ],
@@ -765,6 +1095,8 @@ async function handleNotifyDrop(request, env) {
         })
       });
       sent++;
+      // Mark this specific (beatId, email) pair as sent.
+      await env.ORDERS.put(emailKey, "1", { expirationTtl: 60 * 60 * 24 * 90 });
     } catch (err) {
       console.error("Beat-drop notify failed for", email, err.message);
     }
@@ -776,26 +1108,42 @@ async function handleNotifyDrop(request, env) {
   return json(env, { ok: true, beatId, notified: sent });
 }
 
-// Read the configured release schedule (beatId → ISO timestamp) and notify
-// subscribers of any beat whose drop time has now passed but was never sent.
-function beatDrops(env) {
-  try {
-    return JSON.parse(env.BEAT_DROPS || "{}");
-  } catch {
-    return {};
+// The automated drop schedule is driven by the BEAT_CATALOG releaseAt
+// timers — no manual cron, URL ping, or secret upkeep required. The optional
+// BEAT_DROPS secret still works as an override/extension (beatId → ISO) to
+// reschedule a beat without redeploying (e.g. pushing a drop later).
+// Returns { beatId: ISO timestamp, … }.
+function scheduledDrops(env) {
+  const drops = {};
+  for (const [beatId, entry] of Object.entries(BEAT_CATALOG)) {
+    if (entry.releaseAt) drops[beatId] = entry.releaseAt;
   }
+  try {
+    Object.assign(drops, JSON.parse(env.BEAT_DROPS || "{}"));
+  } catch {
+    // Malformed override: fall back to the catalog schedule.
+  }
+  return drops;
 }
 
+// Fired by the cron trigger: notify each beat's subscribers the moment its
+// scheduled release time passes. KV flags (beat-level + per-email) guarantee
+// every user is told about a release exactly once, no matter how often the
+// cron fires or which region handles the run.
 async function notifyDueDrops(env) {
+  if (!env.ORDERS || typeof env.ORDERS.get !== "function") {
+    console.error("Scheduled drop skipped: ORDERS KV binding not configured");
+    return;
+  }
   const now = Date.now();
-  const drops = beatDrops(env);
+  const drops = scheduledDrops(env);
   for (const [beatId, iso] of Object.entries(drops)) {
     const when = Date.parse(iso);
     if (!when || now < when) continue;
     const sent = (await env.ORDERS.get(notifiedKey(beatId))) === "1";
     if (sent) continue;
     try {
-      await handleNotifyDrop({ json: async () => ({ beatId, beatName: beatId }) }, env);
+      await handleNotifyDrop({ json: async () => ({ beatId }) }, env);
     } catch (err) {
       console.error("Scheduled drop notify failed:", beatId, err.message);
     }
@@ -912,6 +1260,7 @@ export default {
       if (request.method === "POST" && url.pathname === "/api/notify-closure") return await handleNotifyClosure(request, env);
       if (request.method === "POST" && url.pathname === "/api/notify-beat") return await handleNotifyBeat(request, env);
       if (request.method === "POST" && url.pathname === "/api/notify-drop") return await handleNotifyDrop(request, env);
+      if ((request.method === "POST" || request.method === "GET") && url.pathname === "/api/release") return await handleReleaseBeat(request, env);
       if (request.method === "GET" && url.pathname === "/api/status") return await handleStatus(url, env);
       if (request.method === "GET" && url.pathname === "/api/mins") return await handleMins(url, env);
       if (request.method === "POST" && url.pathname === "/api/ipn") return await handleIpn(request, env, ctx);

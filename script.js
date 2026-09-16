@@ -59,8 +59,8 @@ const DAY_MS       = 24 * 60 * 60 * 1000;
 
 // Season registry for announced seasons (Season 1 and Season 2).
 const SEASONS = [
-  { id: "S01", label: "SEASON 1", closeAt: S01_CLOSE_AT },
-  { id: "S02", label: "SEASON 2", launchAt: S02_OPEN_AT, closeAt: S02_CLOSE_AT }
+  { id: "S01", label: "SEASON 1", closeAt: S01_CLOSE_AT, runStart: "2026-08-01T00:00:00Z", runEnd: "2026-08-31T23:59:59Z" },
+  { id: "S02", label: "SEASON 2", launchAt: S02_OPEN_AT, closeAt: S02_CLOSE_AT, runStart: "2026-09-01T17:00:00Z", runEnd: "2026-09-30T20:00:00Z" }
 ];
 
 function seasonLaunchAt(s) {
@@ -81,6 +81,17 @@ function seasonBadge(s) {
   if (state === "ended") return "ENDED";
   const d = new Date(seasonLaunchAt(s));
   return `UPCOMING \u00b7 ${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+}
+
+function seasonDateRange(s) {
+  const pad = (n) => String(n).padStart(2, "0");
+  const fmt = (ts) => {
+    const d = new Date(ts);
+    return `${pad(d.getUTCDate())}.${pad(d.getUTCMonth() + 1)}.${d.getUTCFullYear()}`;
+  };
+  const start = fmt(s.runStart || s.launchAt || s.closeAt);
+  const end = fmt(s.runEnd || s.closeAt || s.launchAt);
+  return `${start} \u2014 ${end}`;
 }
 
 const TICKER_TEXT = "KEN CARTER \u2014 SEASON 02 IS LIVE NOW \u2014 STRICTLY LIMITED LEASES \u2014 ALL BEATS $14.95 \u2014 PICK 2, GET 1 FREE \u2014 ";
@@ -845,12 +856,13 @@ function renderSeasonDrawerList() {
     const state = seasonState(s);
     const viewable = isSeasonViewable(s);
     const active = s.id === selectedSeason;
+    const ended = state === "ended";
 
     const itemEl = document.createElement("div");
-    itemEl.className = "season-drawer-card" + (active ? " season-drawer-card--active" : "");
+    itemEl.className = "season-drawer-card" + (active ? " season-drawer-card--active" : "") + (ended ? " season-drawer-card--ended" : "");
 
     let statusText = "LIVE";
-    if (state === "ended") statusText = "ENDED (ARCHIVE)";
+    if (ended) statusText = "ENDED (ARCHIVE)";
     else if (state === "upcoming") statusText = `UPCOMING \u00b7 ${seasonBadge(s)}`;
 
     const isUpcoming = state === "upcoming";
@@ -860,11 +872,15 @@ function renderSeasonDrawerList() {
     } catch (err) {}
     const isSubscribed = !!savedEmail;
 
+    const LOCK_SVG = '<svg class="season-drawer-card__lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+    const dates = ended ? seasonDateRange(s) : "";
+
     itemEl.innerHTML = `
       <div class="season-drawer-card__header">
         <span class="season-drawer-card__title">${s.label}</span>
         <span class="season-drawer-card__badge season-drawer-card__badge--${state}">${statusText}</span>
       </div>
+      ${ended ? `<div class="season-drawer-card__lock-row">${LOCK_SVG}<span class="season-drawer-card__dates">${dates}</span></div>` : ""}
       <p class="season-drawer-card__desc">
         ${s.id === "S01" ? "Season 01 \u2014 7 Limited Leases ($14.95 each, pick 2 get 1 free). Active until countdown expires." : "Season 02 \u2014 7 Exclusive Beats premiering September 1, 2026."}
       </p>
@@ -882,9 +898,9 @@ function renderSeasonDrawerList() {
         `
       ) : ""}
       <div class="season-drawer-card__actions">
-        <button class="btn btn--solid season-drawer-card__btn" data-season="${s.id}" ${!viewable ? "disabled" : ""}>
+        ${ended ? "" : `<button class="btn btn--solid season-drawer-card__btn" data-season="${s.id}" ${!viewable ? "disabled" : ""}>
           ${active ? "CURRENTLY VIEWING" : viewable ? "VIEW SEASON" : "LOCKED / SOON"}
-        </button>
+        </button>`}
       </div>
     `;
     container.appendChild(itemEl);
@@ -1358,6 +1374,8 @@ function updateBrandSeasonLabel() {
 function setSeason(season) {
   const s = SEASONS.find((x) => x.id === season);
   if (!s) return;
+  // Ended seasons are permanently locked — no access.
+  if (seasonState(s) === "ended") return;
   // Upcoming seasons remain locked/hidden until their launch — no access.
   if (!isSeasonViewable(s)) return;
   if (season !== selectedSeason) {
@@ -1533,6 +1551,7 @@ if (seasonClose) {
 const seasonDrawerList = $("season-drawer-list");
 if (seasonDrawerList) {
   seasonDrawerList.addEventListener("click", (e) => {
+    if (e.target.closest(".season-drawer-card--ended")) return;
     const btn = e.target.closest("button[data-season]");
     if (!btn || btn.disabled) return;
     const seasonId = btn.dataset.season;

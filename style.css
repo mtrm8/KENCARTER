@@ -1571,6 +1571,32 @@ button {
   cursor: not-allowed;
 }
 
+.season-drawer-card--ended {
+  pointer-events: none;
+  opacity: 0.65;
+  border-style: dashed;
+  border-color: var(--gray);
+}
+
+.season-drawer-card__lock-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.season-drawer-card__lock-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--gray);
+  flex-shrink: 0;
+}
+
+.season-drawer-card__dates {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--gray);
+}
+
 .season-alert-form {
   display: flex;
   gap: 6px;

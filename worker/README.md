@@ -25,13 +25,20 @@ npx wrangler secret put NOWPAYMENTS_IPN_SECRET
 npx wrangler secret put RESEND_API_KEY
 npx wrangler secret put RESEND_FROM         # "KEN CARTER <noreply@your-verified-domain>"
 npx wrangler secret put BEAT_LINKS          # paste JSON from step below
-npx wrangler secret put BEAT_DROPS          # paste JSON (beatId → ISO drop time)
+# Optional: BEAT_DROPS overrides the catalog schedule (see below).
+npx wrangler secret put BEAT_DROPS          # JSON (beatId → ISO drop time) — OPTIONAL
 
 npm run deploy
 ```
 
-`BEAT_DROPS` drives the `scheduled` cron (fires every 6h): it emails each beat's
-subscribers one time, once the beat's drop time has passed.
+Beat releases are **fully automated — no manual cron, URL ping, or push needed**.
+The drop schedule comes from the `releaseAt` timers in `BEAT_CATALOG`
+(`worker/src/index.js`, kept in sync with `script.js`). The `scheduled` cron
+(wrangler.toml `[triggers]`, every 15 min) wakes the worker, and each due beat's
+subscribers are emailed exactly once (KV keys `notify-sent:<beatId>` and
+`notify-sent:<beatId>:<email>` dedupe both per-beat and per-user, so re-fires are
+idempotent). The optional `BEAT_DROPS` secret overrides/extends that schedule
+(beatId → ISO timestamp) when you want to reschedule a drop without redeploying.
 
 ## Send emails with Resend (free tier)
 
@@ -63,8 +70,9 @@ are deployed with `npx wrangler secret list`.
 - `POST /api/notify-beat` — `{ beatId, beatName, email, ... }`. Validates the
   email, stores it (deduped) per beat in KV, and sends a confirmation email.
 - `POST /api/notify-drop` — `{ beatId, beatName }`. Emails all subscribers of
-  that beat that it's now live. Sends at most once per beat (tracked in KV).
-  The cron calls this automatically for every scheduled drop.
+  that beat that it's now live. Sends at most once per beat **and per email**
+  (`notify-sent:<beatId>` / `notify-sent:<beatId>:<email>` KV keys). The
+  `scheduled` cron calls this automatically for every due catalog drop.
 
 ## BEAT_LINKS value (paste when prompted — keep out of git)
 

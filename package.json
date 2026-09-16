@@ -4,6 +4,10 @@
   "scripts": {
     "start": "node server.mjs",
     "dev:worker": "cd worker && npm run dev",
-    "preview": "node server.mjs"
+    "preview": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.130.0"
   }
 }
