@@ -45,6 +45,7 @@ const LEASE = readFileSync(root + "LICENSE.txt", "utf8").trim();
 const EXCLUSIVE = readFileSync(root + "EXCLUSIVE_LICENSE.txt", "utf8").trim();
 
 const decodeB64 = (b64) => Buffer.from(b64, "base64").toString("utf8").trim();
+const pdfLatin = (b64) => Buffer.from(b64, "base64").toString("latin1");
 
 class MockKV {
   constructor() { this.map = new Map(); }
@@ -183,8 +184,13 @@ fCheck(/function tickSeason/.test(script), "tickSeason() exists (#season-timer)"
 fCheck(/function tickS02/.test(script), "tickS02() exists (#s02-timer)");
 fCheck(/function tickBeatCountdowns\(\)/.test(script), "tickBeatCountdowns() exists (per-card drop countdowns)");
 fCheck(/exclusivePicks: payScreenOrder\.exclusivePicks/.test(script), "checkout request sends exclusivePicks to worker");
-fCheck(/a\.href = "EXCLUSIVE_LICENSE\.txt"/.test(script), "exclusive orders get EXCLUSIVE_LICENSE.txt download link");
-fCheck(/a\.href = "LICENSE\.txt"/.test(script), "lease orders get LICENSE.txt download link");
+fCheck(/a\.href = "EXCLUSIVE_LICENSE\.pdf"/.test(script), "exclusive orders get EXCLUSIVE_LICENSE.pdf download link");
+fCheck(/a\.href = "LICENSE\.pdf"/.test(script), "lease orders get LICENSE.pdf download link");
+fCheck(/beatAnchorOf\(beat\)/.test(script) && /beatFromAnchor\(/.test(script) && /gotoBeatHash\(/.test(script), "scroll-to-beat anchors (#beat-05 / #s2-beat-03) resolve via gotoBeatHash");
+fCheck(/addEventListener\("hashchange", handleDeepHash\)/.test(script) && /handleDeepHash\(\)/.test(script), "deep hash handled at init and on hashchange");
+fCheck(/openSeasonDirect\(/.test(script), "deep links bypass the ended/upcoming season gates (S01 archive view-only)");
+fCheck(/card--flash/.test(style) && /card__title-link/.test(style), "deep-linked cards flash; card titles carry anchor links");
+fCheck(/href="#\$?\{beatAnchorOf\(beat\)\}"/.test(script), "released card titles link to their scroll-to-beat anchor");
 fCheck(/@media/.test(style), "responsive breakpoints defined");
 fCheck(/flex-direction:\s*column/.test(script) || /\.card__actions\s*\{[^}]*flex-direction:\s*column/.test(style), "card buttons stack (no clipping)");
 fCheck(/\{ beatId, beatName, email, dropDate \}/.test(script), "notify-beat payload includes dropDate");
@@ -306,10 +312,19 @@ const mixEmail = mock.emails[0] || {};
 check(mixEmail.to === "producer@example.com", "email sent to purchaser address");
 check(mixEmail.from === "KEN CARTER <noreply@example.com>", "email uses verified RESEND_FROM sender");
 check(/LICENSE|EXCLUSIVE|CONTRACT/.test(mixEmail.text || ""), "email carries license text");
-const mixAtt = (mixEmail.attachments || []).map((a) => ({ filename: a.filename, text: decodeB64(a.content) }));
-check(mixAtt.length === 2, "mixed delivery email attaches 2 license files (lease + exclusive)");
-check(mixAtt.some((a) => a.filename === "EXCLUSIVE_LICENSE.txt" && a.text === EXCLUSIVE), "EXCLUSIVE_LICENSE.txt attachment decodes byte-exact");
-check(mixAtt.some((a) => a.filename === "LICENSE.txt" && a.text === LEASE), "LICENSE.txt attachment decodes byte-exact");
+const mixAtt = (mixEmail.attachments || []).map((a) => ({ filename: a.filename, content: a.content }));
+check(mixAtt.length === 2, "mixed delivery email attaches 2 styled license PDFs (lease + exclusive)");
+check(
+  mixAtt.some((a) => a.filename === "EXCLUSIVE_LICENSE.pdf" && /^%PDF-/.test(pdfLatin(a.content)) && pdfLatin(a.content).includes("EXCLUSIVE MASTER RIGHTS LICENSE AGREEMENT") && pdfLatin(a.content).includes("irrevocably")),
+  "EXCLUSIVE_LICENSE.pdf attachment is a styled PDF embedding the exclusive terms"
+);
+check(
+  mixAtt.some((a) => a.filename === "LICENSE.pdf" && /^%PDF-/.test(pdfLatin(a.content)) && pdfLatin(a.content).includes("STANDARD NON-EXCLUSIVE LEASE LICENSE AGREEMENT") && pdfLatin(a.content).includes("non-exclusive")),
+  "LICENSE.pdf attachment is a styled PDF embedding the lease terms"
+);
+const mixExclusivePdf = pdfLatin((mixAtt.find((a) => a.filename === "EXCLUSIVE_LICENSE.pdf") || {}).content || "");
+check(mixExclusivePdf.includes("producer@example.com") && mixExclusivePdf.includes("NORTH STAR"), "license PDF carries the customer's email + purchased beat titles");
+check((mixEmail.html || "").includes("— PDF"), "email HTML flags license attachments as PDF");
 check((mixEmail.html || "").includes("EXCLUSIVE MASTER RIGHTS LICENSE"), "email HTML includes exclusive license block");
 check((mixEmail.html || "").includes("NORTH STAR"), "email HTML lists purchased beats");
 check((mixEmail.html || "").includes("OFFICIAL LEASE LICENSE CONTRACT"), "email HTML includes lease license block");
@@ -317,6 +332,8 @@ check(/PAID — VERIFIED BY NOWPAYMENTS IPN/.test(mixEmail.html || ""), "email r
 check((mixEmail.html || "").includes("$329.85"), "email shows exact cart total");
 check(/^PAYMENT FINISHED —/.test(mixEmail.subject || ""), "delivery email subject flags payment finished");
 check(/LINKS RELEASED$/.test(mixEmail.subject || ""), "delivery email subject flags links released");
+check(!/ORDER ID|PAYMENT ID/.test(mixEmail.html || "") && !/Order ID|Payment ID/.test(mixEmail.text || ""), "receipt omits ORDER ID and PAYMENT ID (clean receipt)");
+check(/href="https:\/\/www\.kencarter\.abrdns\.com\/#beat-0[12]"/.test(mixEmail.html || ""), "email rows carry scroll-to-beat deep links (/#beat-01, /#beat-02)");
 
 // PaymentStatus copy also reflects finished status in NP_STATUS_COPY map
 check(mock.calls.np.some((u) => u.includes("/payment")), "NOWPayments API was consulted during checkout/IPN flow");
@@ -336,9 +353,9 @@ check(north && north.isExclusive === true, "exclusive beat link flagged isExclus
 check(rover && rover.isExclusive === false, "lease beat link NOT flagged isExclusive");
 check(
   Array.isArray(r.data.licenses) &&
-    r.data.licenses.some((l) => l.tier === "lease" && l.filename === "LICENSE.txt") &&
-    r.data.licenses.some((l) => l.tier === "exclusive" && l.filename === "EXCLUSIVE_LICENSE.txt"),
-  "mixed order status exposes BOTH license tiers as attachments"
+    r.data.licenses.some((l) => l.tier === "lease" && l.filename === "LICENSE.pdf") &&
+    r.data.licenses.some((l) => l.tier === "exclusive" && l.filename === "EXCLUSIVE_LICENSE.pdf"),
+  "mixed order status exposes BOTH styled-PDF license tiers as attachments"
 );
 check((r.data.links[0].url || "").indexOf("http") === 0, "download links are absolute drive URLs");
 
@@ -348,8 +365,11 @@ r = await api("/api/ipn", { method: "POST", body: JSON.stringify(leaseFinished),
 check(r.res.status === 200 && r.data.released === true, "lease IPN 'finished' releases order");
 await drain();
 const leaseEmail = mock.emails[1] || {};
-const leaseAtt = (leaseEmail.attachments || []).map((a) => ({ filename: a.filename, text: decodeB64(a.content) }));
-check(leaseAtt.length === 1 && leaseAtt[0].filename === "LICENSE.txt" && leaseAtt[0].text === LEASE, "LEASE order email attaches EXACT LICENSE.txt (no exclusive)");
+const leaseAtt = (leaseEmail.attachments || []).map((a) => ({ filename: a.filename, content: a.content }));
+check(
+  leaseAtt.length === 1 && leaseAtt[0].filename === "LICENSE.pdf" && /^%PDF-/.test(pdfLatin(leaseAtt[0].content)) && pdfLatin(leaseAtt[0].content).includes("non-exclusive"),
+  "LEASE order email attaches EXACT styled LICENSE.pdf (no exclusive)"
+);
 check(!leaseEmail.text.includes("EXCLUSIVE MASTER RIGHTS"), "lease email must NOT contain exclusive text");
 check((leaseEmail.html || "").includes("OFFICIAL LEASE LICENSE CONTRACT"), "lease email HTML uses lease license block");
 check((leaseEmail.html || "").includes("RED ROVER") && (leaseEmail.html || "").includes("MIDNIGHT"), "lease email lists all beats");
@@ -360,8 +380,8 @@ check(
   Array.isArray(leaseStatus.data.licenses) &&
     leaseStatus.data.licenses.length === 1 &&
     leaseStatus.data.licenses[0].tier === "lease" &&
-    leaseStatus.data.licenses[0].filename === "LICENSE.txt",
-  "lease order status exposes only the lease license attachment"
+    leaseStatus.data.licenses[0].filename === "LICENSE.pdf",
+  "lease order status exposes only the styled lease license attachment"
 );
 check(leaseStatus.data.links.every((l) => !l.isExclusive), "lease order links have isExclusive=false");
 
@@ -393,9 +413,9 @@ check(ghost && ghost.url === null && ghost.isExclusive === false, "no-URL lease 
 check(phantom && phantom.isExclusive === true && /^http/.test(phantom.url || ""), "exclusive beat keeps its own drive link + isExclusive flag");
 check(
   Array.isArray(hangStatus.data.licenses) &&
-    hangStatus.data.licenses.some((l) => l.tier === "exclusive" && l.filename === "EXCLUSIVE_LICENSE.txt") &&
-    hangStatus.data.licenses.some((l) => l.tier === "lease" && l.filename === "LICENSE.txt"),
-  "hangman status exposes both license attachment tiers"
+    hangStatus.data.licenses.some((l) => l.tier === "exclusive" && l.filename === "EXCLUSIVE_LICENSE.pdf") &&
+    hangStatus.data.licenses.some((l) => l.tier === "lease" && l.filename === "LICENSE.pdf"),
+  "hangman status exposes both styled-PDF license attachment tiers"
 );
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -475,6 +495,14 @@ check(r.res.status === 400, "invalid JSON checkout body rejected");
 // Physical files must exist at site root (frontend reference targets)
 check(readFileSync(root + "LICENSE.txt", "utf8").includes("Prod. by Ken Carter"), "LICENSE.txt exists at site root with credit clause");
 check(readFileSync(root + "EXCLUSIVE_LICENSE.txt", "utf8").includes("Full Master Rights Transfer"), "EXCLUSIVE_LICENSE.txt exists at site root with transfer clause");
+check(
+  (() => { try { const b = readFileSync(root + "LICENSE.pdf"); return b.slice(0, 5).toString("latin1") === "%PDF-"; } catch { return false; } })(),
+  "LICENSE.pdf exists at site root (styled lease reference for popup downloads)"
+);
+check(
+  (() => { try { const b = readFileSync(root + "EXCLUSIVE_LICENSE.pdf"); return b.slice(0, 5).toString("latin1") === "%PDF-"; } catch { return false; } })(),
+  "EXCLUSIVE_LICENSE.pdf exists at site root (styled exclusive reference for popup downloads)"
+);
 
 // ───────────────────────────────────────────────────────────────────────────
 // G. Per-beat "notify me when it drops"

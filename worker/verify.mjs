@@ -107,10 +107,15 @@ if (srcLeaseMatch) {
 
 // Frontend download link must point at the physical file
 const frontendCode = fs.readFileSync(root + "script.js", "utf8");
-if (frontendCode.includes('a.href = "EXCLUSIVE_LICENSE.txt"')) {
-  PASS("Frontend exclusive license download links to EXCLUSIVE_LICENSE.txt");
+if (frontendCode.includes('a.href = "EXCLUSIVE_LICENSE.pdf"')) {
+  PASS("Frontend exclusive license download links to EXCLUSIVE_LICENSE.pdf");
 } else {
-  FAIL("Frontend exclusive license download does not point to EXCLUSIVE_LICENSE.txt");
+  FAIL("Frontend exclusive license download does not point to EXCLUSIVE_LICENSE.pdf");
+}
+if (frontendCode.includes('a.href = "LICENSE.pdf"')) {
+  PASS("Frontend lease license download links to LICENSE.pdf");
+} else {
+  FAIL("Frontend lease license download does not point to LICENSE.pdf");
 }
 
 // 2. Verify license text is embedded in worker
@@ -125,10 +130,10 @@ if (workerCode.includes("function buildDeliveryMessage") && workerCode.includes(
 } else {
   FAIL("Worker missing buildDeliveryMessage() function");
 }
-if (workerCode.includes("EXCLUSIVE_LICENSE.txt") && workerCode.includes("tier: \"exclusive\"") && workerCode.includes("licenses")) {
-  PASS("Worker returns per-tier license attachments in API responses and email payload");
+if (workerCode.includes("EXCLUSIVE_LICENSE.pdf") && workerCode.includes("LICENSE.pdf") && workerCode.includes("tier: \"exclusive\"") && workerCode.includes("licenses")) {
+  PASS("Worker returns per-tier styled PDF license attachments in API responses and email payload");
 } else {
-  FAIL("Worker missing per-tier license attachment routing");
+  FAIL("Worker missing per-tier styled PDF license attachment routing");
 }
 
 // 3. Verify HMAC verification logic
@@ -182,7 +187,7 @@ if (statusHandler) {
     ["rec.released", "checks if order is released"],
     ["beatLinks.*env", "fetches beat links from env.BEAT_LINKS"],
     ["links\\s*=\\s*rec\\.items\\.map", "builds links array with id (incl. null urls)"],
-    ["tier: \"exclusive\", filename: \"EXCLUSIVE_LICENSE.txt\"", "exposes exclusive license attachment metadata"],
+    ["tier: \"exclusive\", filename: \"EXCLUSIVE_LICENSE.pdf\"", "exposes exclusive styled-PDF license attachment metadata"],
     ["licenses", "includes licenses array in response"]
   ];
   let statusFail = 0;
@@ -199,18 +204,19 @@ if (statusHandler) {
   FAIL("Worker missing handleStatus function");
 }
 
-// 6. Verify delivery email includes license attachments + retry plumbing
-INFO("\nStep 6: Delivery email license attachments & retry");
-const emailFunc = sliceFn("function buildDeliveryMessage", "async function sendEmailWithRetry");
+// 6. Verify the delivery email: clean receipt, styled-PDF attachments + retry
+INFO("\nStep 6: Delivery email clean receipt, styled-PDF attachments & retry");
+const emailFunc = sliceFn("async function buildDeliveryMessage", "async function sendEmailWithRetry");
 if (emailFunc) {
   PASS("Worker has buildDeliveryMessage function");
   const checks = [
     ["attachments", "builds license attachments"],
-    ["base64Encode\\(LICENSE_TEXT\\)", "base64-encodes the lease license attachment"],
-    ["base64Encode\\(EXCLUSIVE_LICENSE_TEXT\\)", "base64-encodes the exclusive license attachment"],
+    ["buildLicensePdf", "generates styled license PDFs (buildLicensePdf)"],
     ["OFFICIAL LEASE LICENSE CONTRACT", "notes the lease license in the email"],
+    ["ORDER DATE", "receipt shows the exact order date"],
     ["const text =", "builds plain-text body for Resend"],
-    ["DELIVERY PENDING", "marks missing links as delivery-pending"]
+    ["DELIVERY PENDING", "marks missing links as delivery-pending"],
+    ["beatAnchor", "builds scroll-to-beat anchors (#beat-05 / #s2-beat-03)"]
   ];
   let emailFail = 0;
   for (const [pattern, desc] of checks) {
@@ -221,9 +227,24 @@ if (emailFunc) {
       PASS(`Email function ${desc}`);
     }
   }
-  if (emailFail === 0) PASS("Delivery email includes links + per-tier license attachments");
+  if (emailFail === 0) PASS("Delivery email includes links + per-tier styled-PDF license attachments");
+if (workerCode.includes("DCTDecode") && workerCode.includes("/Im1 Do")) {
+  PASS("Styled PDFs embed the Ken Carter logo JPEG (DCTDecode image xobject)");
+} else {
+  FAIL("Styled PDFs missing logo JPEG embedding (DCTDecode /Im1)");
+}
 } else {
   FAIL("Worker missing buildDeliveryMessage function");
+}
+if (!/row\("ORDER ID"|row\("PAYMENT ID"/.test(workerCode)) {
+  PASS("Receipt omits internal ORDER ID and PAYMENT ID fields");
+} else {
+  FAIL("Receipt still exposes ORDER ID / PAYMENT ID");
+}
+if (workerCode.includes("DEFAULT_RESEND_FROM") && workerCode.includes("noreply@kencarter.abrdns.com")) {
+  PASS("Sender defaults to noreply@kencarter.abrdns.com (store's own domain)");
+} else {
+  FAIL("Missing verified-domain sender default");
 }
 
 if (workerCode.includes("async function sendEmailWithRetry")) {

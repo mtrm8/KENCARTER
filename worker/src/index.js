@@ -515,19 +515,373 @@ By downloading and using this beat, the Buyer acknowledges and agrees to all ter
 
 *Ken Carter — Producer — All Rights Reserved*`;
 
+// ── Styled license PDFs (hand-rolled — zero dependencies) ────────────────
+// Workers can't bundle a PDF library, so this emitter builds valid A4 PDFs
+// directly: a clean double border, the Ken Carter logo (fetched JPEG, with a
+// typographic fallback when the logo isn't reachable), the license title, a
+// metadata block (licensee email, exact order date, purchased beats, amount
+// paid), the full license terms with automatic pagination + page numbers, and
+// a footer. Returns base64 so the payload goes straight into Resend's
+// attachments array. The same emitter produces the LICENSE.pdf /
+// EXCLUSIVE_LICENSE.pdf reference files at the site root.
+
+const PDF_PAGE_W = 595; // A4 in points
+const PDF_PAGE_H = 842;
+const PDF_M = 34;       // page margin
+const PDF_TERM_SIZE = 8.7;
+
+// Map the couple of non-ASCII glyphs the license copy may carry (em/en dashes,
+// curly quotes, bullets) onto plain ASCII so content streams stay byte-clean.
+const PDF_ASCII_MAP = {
+  "\u2014": "-", "\u2013": "-", "\u2015": "-", "\u2019": "'", "\u2018": "'",
+  "\u201c": '"', "\u201d": '"', "\u00b7": "-", "\u2022": "-", "\u2026": "...",
+  "\u00a0": " ", "\u00ab": "<<", "\u00bb": ">>", "\u00a3": "", "\u20ac": ""
+};
+
+function pdfText(s) {
+  let out = "";
+  for (const ch of String(s == null ? "" : s)) {
+    if (ch === "\n" || ch === "\r") { out += " "; continue; }
+    const code = ch.codePointAt(0);
+    out += code < 0x80 ? ch : (PDF_ASCII_MAP[ch] != null ? PDF_ASCII_MAP[ch] : "?");
+  }
+  return out;
+}
+
+const pdfEscape = (s) => String(s).replace(/[\\()]/g, (c) => "\\" + c);
+const pdfStr = (s) => pdfEscape(pdfText(s));
+
+// Approximate Helvetica string width (average advance ≈ 0.5 × size per char).
+const pdfW = (s, size) => pdfText(s).length * size * 0.5;
+
+// Read JPEG dimensions (and color components) from the SOFn marker so the
+// image box and XObject /Width /Height can be declared. Null for non-JPEGs.
+function jpegDims(bytes) {
+  let i = 2;
+  while (i + 9 < bytes.length) {
+    if (bytes[i] !== 0xff) { i++; continue; }
+    const marker = bytes[i + 1];
+    i += 2;
+    if (marker === 0xff || marker === 0xd8) continue;
+    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+      const h = (bytes[i + 3] << 8) | bytes[i + 4];
+      const w = (bytes[i + 5] << 8) | bytes[i + 6];
+      return w > 0 && h > 0 ? { width: w, height: h, components: bytes[i + 7] } : null;
+    }
+    const len = (bytes[i] << 8) | bytes[i + 1];
+    if (len < 2) break;
+    i += len;
+  }
+  return null;
+}
+
+// Cache the logo across deliveries (one fetch per worker isolate lifetime).
+let logoBytesPromise = null;
+function cachedLogoBytes() {
+  if (logoBytesPromise === null) {
+    logoBytesPromise = (async () => {
+      try {
+        const res = await fetch(LOGO_URL);
+        if (!res.ok) return null;
+        const buf = new Uint8Array(await res.arrayBuffer());
+        return buf.length ? buf : null;
+      } catch {
+        return null;
+      }
+    })();
+  }
+  return logoBytesPromise;
+}
+
+// Split the markdown-ish license copy into printable paragraphs: headings are
+// bolded (larger), table rows collapse to "key — value", rules are dropped.
+function pdfParagraphs(src) {
+  const out = [];
+  for (const raw of String(src || "").split(/\r?\n/)) {
+    let line = raw.trim();
+    if (!line) continue;
+    if (/^\|?[\s\d:|\-]+$/.test(line) && line.includes("-")) continue; // table divider
+    if (/^\|.*\|$/.test(line)) {
+      const cells = line.replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+      line = cells.length >= 2 ? cells.join(" — ") : line.replace(/\|/g, "");
+    }
+    line = line.replace(/^#{2,3}\s+/, "").replace(/^\*\*/, "").replace(/\*\*$/, "").replace(/\*$/, "").trim();
+    if (!line) continue;
+    const bold =
+      /\bProd\. by Ken Carter\b/.test(line) ||
+      (line.length <= 60 && line.toUpperCase() === line && /\s/.test(line));
+    out.push({ text: line, bold });
+  }
+  return out;
+}
+
+// Wrap a paragraph onto lines that fit the content width.
+function pdfWrap(text, size) {
+  const maxW = PDF_PAGE_W - 2 * PDF_M - 24;
+  const words = String(text).split(/\s+/).filter(Boolean);
+  const lines = [];
+  let line = "";
+  for (const w of words) {
+    const cand = line ? line + " " + w : w;
+    if (!line || pdfW(cand, size) <= maxW) line = cand;
+    else { lines.push(line); line = w; }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+// Render every page's content stream for a license PDF (frame on each page,
+// brand zone on page 1, metadata block, paginated terms, footers).
+function renderLicensePdf({ title, subtitle, licensee, orderDate, beatsText, totalText, terms, footerText, logo }) {
+  const contentW = PDF_PAGE_W - 2 * PDF_M;
+  const pages = [];
+  let ops = [];
+  let y = 0;
+
+  const startPage = () => { ops = []; pages.push(ops); y = PDF_PAGE_H - PDF_M - 8; frame(); };
+  const need = (h) => { if (y - h < PDF_M + 24) startPage(); };
+  const frame = () => {
+    ops.push(`q 0.86 0.86 0.86 RG 1.2 w ${PDF_M - 6} ${PDF_M - 6} ${contentW + 12} ${PDF_PAGE_H - 2 * PDF_M + 12} re S Q`);
+    ops.push(`q 0 0 0 RG 0.6 w ${PDF_M - 1} ${PDF_M - 1} ${contentW + 2} ${PDF_PAGE_H - 2 * PDF_M + 2} re S Q`);
+  };
+  const text = (str, x, yp, { f = 1, size = PDF_TERM_SIZE, gray = 0, w = contentW, align = "left" } = {}) => {
+    const s = pdfText(str);
+    let tx = x;
+    if (align === "center") tx = x + (w - pdfW(s, size)) / 2;
+    else if (align === "right") tx = x + w - pdfW(s, size);
+    ops.push(`BT /F${f} ${size} Tf ${gray} g ${tx.toFixed(1)} ${yp.toFixed(1)} Td (${pdfEscape(s)}) Tj ET`);
+  };
+  const hairline = (y1) => ops.push(`q 0.9 0.9 0.9 RG 0.4 w ${PDF_M} ${y1} ${contentW} 0 re S Q`);
+
+  // ── Page 1: brand zone ──
+  startPage();
+  if (logo) {
+    const lw = 118;
+    const lh = Math.min(54, Math.max(26, lw * logo.heightPt / logo.widthPt));
+    const lx = (PDF_PAGE_W - lw) / 2;
+    const ly = y - lh;
+    ops.push(`q ${lx.toFixed(1)} ${ly.toFixed(1)} ${lw} ${lh.toFixed(1)} re W n /Im1 Do Q`);
+    y = ly - 12;
+  } else {
+    text("KEN CARTER", PDF_M, y - 8, { f: 2, size: 17, w: contentW, align: "center" });
+    y -= 22;
+    hairline(y);
+    y -= 10;
+  }
+
+  // ── Title + subtitle ──
+  need(46);
+  y -= 8;
+  text(title, PDF_M, y, { f: 2, size: 12.5 });
+  y -= 16;
+  text(subtitle, PDF_M, y, { f: 3, size: 8, gray: 0.42 });
+  y -= 12;
+  hairline(y);
+  y -= 16;
+
+  // ── Metadata block (licensee, exact order date, purchased beats, paid) ──
+  const meta = [
+    ["LICENSEE", licensee || "—"],
+    ["ORDER DATE", orderDate || "—"],
+    ["BEATS LICENSED", beatsText || "—"],
+    ["AMOUNT PAID", totalText || "—"]
+  ];
+  let metaRows, metaTop, metaH, cursor;
+  for (;;) {
+    need(meta.length * 26 + 28);
+    metaTop = y;
+    cursor = metaTop - 10;
+    metaRows = meta.map(([k, v]) => {
+      const lines = pdfWrap(v, 8.6);
+      const rh = 16 + lines.length * 12 + 4;
+      const rowTop = cursor - rh;
+      cursor = rowTop;
+      return { k, lines, rh, rowTop };
+    });
+    metaH = metaTop - cursor + 10;
+    if (y - metaH >= PDF_M + 24) break;
+    startPage();
+  }
+  ops.push(`q 0.967 0.967 0.967 rg ${PDF_M} ${cursor.toFixed(1)} ${contentW} ${metaH} re f Q`);
+  ops.push(`q 0 0 0 RG 0.7 w ${PDF_M} ${cursor.toFixed(1)} ${contentW} ${metaH} re S Q`);
+  metaRows.forEach((r, i) => {
+    text(r.k, PDF_M + 11, r.rowTop + r.rh - 10, { f: 2, size: 6.6, gray: 0.42 });
+    r.lines.forEach((ln, li) => {
+      text(ln, PDF_M + 11, r.rowTop + r.rh - 22 - li * 12, { f: 1, size: 8.6 });
+    });
+    if (i < metaRows.length - 1) hairline(r.rowTop);
+  });
+  y = metaTop - metaH - 14;
+
+  // ── License terms (paginated) ──
+  need(20);
+  text("LICENSE TERMS & CONDITIONS", PDF_M, y, { f: 2, size: 9.2 });
+  y -= 15;
+  for (const para of terms) {
+    const size = para.bold ? 8.9 : PDF_TERM_SIZE;
+    for (const ln of pdfWrap(para.text, size)) {
+      need(13);
+      text(ln, PDF_M, y, { f: para.bold ? 2 : 1, size });
+      y -= 13;
+    }
+    y -= 4;
+  }
+
+  // ── Footers (needs the final page count) ──
+  pages.forEach((page, i) => {
+    page.push(`BT /F1 6.8 Tf 0.45 g ${PDF_M} 40 Td (${pdfStr(footerText)}) Tj ET`);
+    const pageLabel = `PAGE ${i + 1} OF ${pages.length}`;
+    const px = PDF_PAGE_W - PDF_M - pdfW(pageLabel, 6.8);
+    page.push(`BT /F1 6.8 Tf 0.45 g ${px.toFixed(1)} 40 Td (${pdfStr(pageLabel)}) Tj ET`);
+  });
+
+  return pages;
+}
+
+// Serialize PDF objects (numbers assigned in array order) into valid PDF bytes.
+// Bodies may be strings or mixed (string | Uint8Array)[] for embedded JPEGs.
+function serializePdf(objects) {
+  const encoder = new TextEncoder();
+  const parts = [];
+  let length = 0;
+  const addStr = (s) => { const b = encoder.encode(s); parts.push(b); length += b.length; };
+  const addRaw = (b) => { parts.push(b); length += b.length; };
+  addStr("%PDF-1.4\n");
+  const offsets = new Array(objects.length).fill(0);
+  objects.forEach((body, i) => {
+    offsets[i] = length;
+    addStr(`${i + 1} 0 obj\n`);
+    if (Array.isArray(body)) for (const part of body) (typeof part === "string" ? addStr(part) : addRaw(part));
+    else addStr(body);
+    addStr("\nendobj\n");
+  });
+  const xref = length;
+  addStr(`xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`);
+  for (const off of offsets) addStr(`${String(off).padStart(10, "0")} 00000 n \n`);
+  addStr(`trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+  const out = new Uint8Array(length);
+  let pos = 0;
+  for (const p of parts) { out.set(p, pos); pos += p.length; }
+  return out;
+}
+
+// Assemble rendered pages → PDF bytes. Object layout:
+//   1 Catalog · 2 Pages · 3/4/5 fonts · 6..5+n content streams ·
+//   6+n..5+2n pages · (image XObject last when a logo is embedded).
+function assembleLicensePdf(pages, logo) {
+  const n = pages.length;
+  const contentStart = 6;
+  const pageObjStart = contentStart + n;
+  const imageObjNum = logo ? pageObjStart + n : 0;
+
+  const contents = pages.map((ops) => {
+    const stream = ops.join("\n") + "\n";
+    return `<< /Length ${stream.length} >>\nstream\n${stream}endstream`;
+  });
+  const pageObjs = pages.map((_p, i) => {
+    const c = contentStart + i;
+    return (
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PDF_PAGE_W} ${PDF_PAGE_H}] ` +
+      `/Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >>` +
+      (logo ? ` /XObject << /Im1 ${imageObjNum} 0 R >>` : "") + ` >> ` +
+      `/Contents ${c} 0 R >>`
+    );
+  });
+
+  const objects = [
+    `<< /Type /Catalog /Pages 2 0 R >>`,
+    `<< /Type /Pages /Kids [${pageObjs.map((_p, i) => `${pageObjStart + i} 0 R`).join(" ")}] /Count ${n} >>`,
+    `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>`,
+    `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>`,
+    `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique >>`,
+    ...contents,
+    ...pageObjs
+  ];
+
+  if (logo) {
+    const cs = logo.components === 4 ? "/DeviceCMYK" : logo.components === 1 ? "/DeviceGray" : "/DeviceRGB";
+    objects.push([
+      `<< /Type /XObject /Subtype /Image /Width ${logo.width} /Height ${logo.height} /ColorSpace ${cs} /BitsPerComponent 8 /Filter /DCTDecode /Length ${logo.bytes.length} >>\nstream\n`,
+      logo.bytes,
+      `\nendstream`
+    ]);
+  }
+  return serializePdf(objects);
+}
+
+function bytesToBase64(bytes) {
+  let bin = "";
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  return btoa(bin);
+}
+
+// Human-readable "exact order date" label, e.g. "18 SEPTEMBER 2026".
+const PDF_MONTHS = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
+function orderDateLabel(ts) {
+  const t = new Date(ts);
+  if (Number.isNaN(t.getTime())) return utcOf(ts) || "—";
+  return `${t.getUTCDate()} ${PDF_MONTHS[t.getUTCMonth()] || ""} ${t.getUTCFullYear()}`;
+}
+
+// Public entry: generate a styled license PDF for a tier and return base64.
+async function buildLicensePdf({ kind, beats, licensee, orderDate, totalText }) {
+  const isExclusive = kind === "exclusive";
+  const title = isExclusive
+    ? "EXCLUSIVE MASTER RIGHTS LICENSE AGREEMENT"
+    : "STANDARD NON-EXCLUSIVE LEASE LICENSE AGREEMENT";
+  const subtitle = "KEN CARTER — " + (isExclusive ? "FULL RIGHTS TRANSFER — PURCHASED BEAT(S)" : "COMMERCIAL & STREAMING USE — PURCHASED BEAT(S)");
+  const terms = pdfParagraphs(isExclusive ? EXCLUSIVE_LICENSE_TEXT : LICENSE_TEXT);
+
+  const logoBytes = await cachedLogoBytes();
+  const dims = logoBytes && jpegDims(logoBytes);
+  const logo = logoBytes && dims
+    ? { bytes: logoBytes, width: dims.width, height: dims.height, components: dims.components || 3, widthPt: 118, heightPt: 118 * dims.height / dims.width }
+    : null;
+
+  const pages = renderLicensePdf({
+    title,
+    subtitle,
+    licensee: String(licensee || ""),
+    orderDate: String(orderDate || ""),
+    beatsText: String(beats || ""),
+    totalText: String(totalText || ""),
+    terms,
+    footerText: "KEN CARTER — ALL RIGHTS RESERVED",
+    logo
+  });
+  return bytesToBase64(assembleLicensePdf(pages, logo));
+}
+
+// Map a beat id to its pretty scroll-to-beat anchor used in emails and store
+// links:  "beat5" → "#beat-05" · "s2-beat3" → "#s2-beat-03".
+function beatAnchor(beatId) {
+  const s = String(beatId || "");
+  let m = s.match(/^beat(\d+)$/i);
+  if (m) return "beat-" + m[1].padStart(2, "0");
+  m = s.match(/^s(\d+)-beat(\d+)$/i);
+  if (m) return "s" + m[1] + "-beat-" + m[2].padStart(2, "0");
+  return s;
+}
+
+// Default sender under the store's own (verified) domain, so delivery mail is
+// SPF/DKIM/DMARC-authenticated. Env RESEND_FROM overrides when provided.
+const DEFAULT_RESEND_FROM = "KEN CARTER <noreply@kencarter.abrdns.com>";
+const resendFrom = (env) => env.RESEND_FROM || DEFAULT_RESEND_FROM;
+
 // Builds the full branded delivery email for a released order: dark logo shell,
-// payment-details box, per-beat download rows (tier badge + url), license
-// attachment chips, and a plain-text fallback. Returns everything sendEmail
-// needs — subject/html/text plus base64 attachments for every license tier in
-// the cart (lease + exclusive), so real license .txt files ride along with the
-// email instead of being inlined as unstyled <pre> blocks.
-function buildDeliveryMessage(rec, links, payment, orderId) {
-  const ts = new Date().toUTCString();
-  const pid = String(payment.payment_id || "");
+// a clean receipt box (verified amount, beats, free beats, order date — NO
+// internal order/payment IDs), per-beat download rows (tier badge + url + a
+// VIEW link that deep-links to the exact beat on the store), license-attachment
+// chips, and a plain-text fallback. License contracts are generated as styled
+// PDFs via buildLicensePdf — one attachment per tier in the cart.
+async function buildDeliveryMessage(rec, links, payment, orderId) {
+  const dateLabel = orderDateLabel(rec.updated || Date.now());
   const hasExclusive = rec.items.some((i) => i.isExclusive);
   const hasLease = rec.items.some((i) => !i.isExclusive);
   const total = money(rec.total);
   const beats = (rec.labeled || []).join(", ");
+  const beatsPdf = (rec.labeled || []).join("\n") || "—";
   const free = rec.freeTitles && rec.freeTitles.length ? rec.freeTitles.join(", ") : "—";
 
   const row = (label, value, last = false) =>
@@ -535,12 +889,10 @@ function buildDeliveryMessage(rec, links, payment, orderId) {
     `<td style="padding:10px 0;font-size:12px;line-height:1.5;color:#f2f2f2;text-align:right;font-weight:600;${last ? "" : "border-bottom:1px solid #191919;"}vertical-align:top;">${value}</td></tr>`;
 
   const rows =
-    row("ORDER ID", esc(orderId)) +
-    row("PAYMENT ID", esc(pid)) +
     row("PAID — VERIFIED BY NOWPAYMENTS IPN", `<span style="font-weight:800;color:#ffffff;">${total}</span>`) +
     row("BEATS", esc(beats)) +
     row("FREE BEATS", esc(free)) +
-    row("DATE", esc(ts), true);
+    row("ORDER DATE", esc(dateLabel), true);
 
   const files = links
     .map((l) => {
@@ -550,9 +902,11 @@ function buildDeliveryMessage(rec, links, payment, orderId) {
       const cta = l.url
         ? `<a href="${esc(l.url)}" target="_blank" rel="noopener" style="color:#ffffff;font-weight:700;text-decoration:underline;">→ DOWNLOAD</a>`
         : `<span style="color:#777777;font-weight:700;">↻ DELIVERY PENDING — URL COMING</span>`;
+      const view = `${SITE_URL}/#${beatAnchor(l.id)}`;
       return (
         `<p style="margin:0 0 10px;font-size:12px;color:#ffffff;">${esc(l.title)} ${badge}<br/>` +
-        `<span style="font-size:11px;color:#888888;">${cta}</span></p>`
+        `<span style="font-size:11px;color:#888888;">${cta} <span style="color:#3a3a3a;">\u00b7</span> ` +
+        `<a href="${esc(view)}" target="_blank" rel="noopener" style="color:#b9b9b9;font-weight:600;text-decoration:underline;">VIEW ${esc(l.title)} →</a></span></p>`
       );
     })
     .join("");
@@ -564,9 +918,9 @@ function buildDeliveryMessage(rec, links, payment, orderId) {
     licenseChips.length
       ? `<div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#888888;margin:18px 0 10px;">LICENSE ATTACHMENTS</div>` +
         licenseChips
-          .map((c) => `<p style="margin:0 0 6px;font-size:11px;color:#ffffff;">▸ ${c}</p>`)
+          .map((c) => `<p style="margin:0 0 6px;font-size:11px;color:#ffffff;">▸ ${c} <span style="color:#555555;">— PDF</span></p>`)
           .join("") +
-        `<p style="margin:10px 0 0;font-size:12px;color:#888888;">Your official ${licenseChips.length === 1 ? "license contract is" : "license contracts are"} attached to this email. Keep it — it is your proof of purchase.</p>`
+        `<p style="margin:10px 0 0;font-size:12px;color:#888888;">Your official ${licenseChips.length === 1 ? "license contract is" : "license contracts are"} attached to this email as a styled PDF. Keep it — it is your proof of purchase.</p>`
       : "";
 
   const html =
@@ -575,7 +929,7 @@ function buildDeliveryMessage(rec, links, payment, orderId) {
     `<meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark">` +
     `<title>PAYMENT FINISHED — ${total} — KEN CARTER</title></head>` +
     `<body style="margin:0;padding:0;background-color:#000000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#ffffff;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">` +
-    `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">PAYMENT FINISHED — ${total} — KEN CARTER&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>` +
+    `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">PAYMENT FINISHED — ${total} — KEN CARTER&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;</div>` +
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#000000" style="background-color:#000000;border-collapse:collapse;">` +
     `<tr><td align="center" style="padding:28px 12px;">` +
     `<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;margin:0 auto;border:1px solid #222222;border-collapse:collapse;">` +
@@ -605,25 +959,33 @@ function buildDeliveryMessage(rec, links, payment, orderId) {
     `</body></html>`;
 
   const filesText = links
-    .map((l) => `${l.title}${l.isExclusive ? " [EXCLUSIVE MASTER RIGHTS]" : " [LEASE]"}: ${l.url || "DELIVERY PENDING — URL COMING"}`)
+    .map((l) => `${l.title}${l.isExclusive ? " [EXCLUSIVE MASTER RIGHTS]" : " [LEASE]"}: ${l.url || "DELIVERY PENDING — URL COMING"}\n  View: ${SITE_URL}/#${beatAnchor(l.id)}`)
     .join("\n");
 
   const text =
     `PAYMENT FINISHED — ORDER CONFIRMATION\n` +
-    `Order ID: ${orderId}\n` +
-    `Payment ID: ${pid}\n` +
     `Total: ${total}\n` +
     `Beats: ${beats}\n` +
     `Free: ${free}\n` +
-    `Date: ${ts}\n\n` +
+    `Order date: ${dateLabel}\n\n` +
     `YOUR FILES — INSTANT DOWNLOAD\n${filesText}\n\n` +
-    `License${licenseChips.length === 1 ? "" : "s"} included as attachments: ${licenseChips.join(", ") || "—"}`;
+    `License${licenseChips.length === 1 ? "" : "s"} included as PDF attachments: ${licenseChips.join(", ") || "—"}`;
 
   const subject = `PAYMENT FINISHED — ${total} — ${beats} — LINKS RELEASED`;
 
   const attachments = [];
-  if (hasLease) attachments.push({ filename: "LICENSE.txt", content: base64Encode(LICENSE_TEXT) });
-  if (hasExclusive) attachments.push({ filename: "EXCLUSIVE_LICENSE.txt", content: base64Encode(EXCLUSIVE_LICENSE_TEXT) });
+  if (hasLease) {
+    attachments.push({
+      filename: "LICENSE.pdf",
+      content: await buildLicensePdf({ kind: "lease", beats: beatsPdf, licensee: rec.email, orderDate: dateLabel, totalText: total })
+    });
+  }
+  if (hasExclusive) {
+    attachments.push({
+      filename: "EXCLUSIVE_LICENSE.pdf",
+      content: await buildLicensePdf({ kind: "exclusive", beats: beatsPdf, licensee: rec.email, orderDate: dateLabel, totalText: total })
+    });
+  }
 
   return { subject, html, text, attachments };
 }
@@ -672,7 +1034,9 @@ async function assertExclusivesAvailable(env, orderId, exclusiveItems) {
 async function sendEmail(env, { to, subject, html, text = "", attachments = [] }) {
   const apiKey = env.RESEND_API_KEY;
   if (!apiKey) throw new Error("RESEND_API_KEY NOT CONFIGURED");
-  const from = env.RESEND_FROM;
+  // Sender defaults to the store's own verified domain (kencarter.abrdns.com)
+  // so SPF/DKIM/DMARC authenticate; an explicit RESEND_FROM env override wins.
+  const from = resendFrom(env);
   if (!from) throw new Error("RESEND_FROM NOT CONFIGURED");
   const body = { from, to, subject, reply_to: to };
   if (html) body.html = html;
@@ -722,7 +1086,7 @@ async function sendEmailWithRetry(env, msg) {
 async function deliverOrderEmail(env, rec, links, payment, orderId) {
   let delivery;
   try {
-    const msg = buildDeliveryMessage(rec, links, payment, orderId);
+    const msg = await buildDeliveryMessage(rec, links, payment, orderId);
     await sendEmailWithRetry(env, {
       to: rec.email,
       subject: msg.subject,
@@ -1013,12 +1377,13 @@ async function handleReleaseBeat(request, env) {
   }
 
   // --- 2. Inputs: from JSON body (POST) or query params (GET) ---
-  let beatId = "", beatName = "", ctaUrl = SITE_URL, force = false;
+  let beatId = "", beatName = "", ctaUrl = SITE_URL, force = false, gaveUrl = false;
   if (request.method === "GET") {
     beatId = (url.searchParams.get("beatId") || "").trim();
     beatName = formatBeatId(
       (url.searchParams.get("beatName") || url.searchParams.get("beatId") || "").trim()
     );
+    gaveUrl = !!((url.searchParams.get("url") || "").trim());
     ctaUrl = (url.searchParams.get("url") || SITE_URL).trim();
     force = /^(1|true|yes|y|on)$/i.test((url.searchParams.get("force") || "").trim());
   } else {
@@ -1028,9 +1393,13 @@ async function handleReleaseBeat(request, env) {
     }
     beatId = String(body.beatId || "").trim();
     beatName = formatBeatId(String(body.beatName || body.beatId || "").trim());
+    gaveUrl = !!String(body.url || "").trim();
     ctaUrl = String(body.url || SITE_URL).trim();
     force = /^(1|true|yes|y|on)$/i.test(String(body.force || "").trim());
   }
+  // Deep-link the CTA to the exact beat on the store (/#beat-05, /#s2-beat-03)
+  // unless the caller explicitly supplied a custom destination URL.
+  if (beatId && !gaveUrl) ctaUrl = SITE_URL + "/#" + beatAnchor(beatId);
 
   // --- 2. Gather subscribers ---
   let subscriberMap = {}; // { beatId: [email, …] }
@@ -1066,7 +1435,7 @@ async function handleReleaseBeat(request, env) {
   // clear error instead of a per-recipient failure list.
   const missingResend = [];
   if (!env.RESEND_API_KEY) missingResend.push("RESEND_API_KEY");
-  if (!env.RESEND_FROM) missingResend.push("RESEND_FROM");
+  if (!resendFrom(env)) missingResend.push("RESEND_FROM");
   if (missingResend.length) {
     return json(env, { error: "EMAIL NOT CONFIGURED — MISSING SECRET(S): " + missingResend.join(", ") }, 500);
   }
@@ -1120,6 +1489,7 @@ async function handleReleaseBeat(request, env) {
             `BPM: ${bpm}\nKey: ${info.key || "—"}\n` +
             `Preview: ${info.youtube || "—"}\n` +
             `Status: BEAT IS LIVE — LEASE NOW (pick 2, get 1 free)\n` +
+            `View: ${ctaUrl}\n` +
             `Date: ${ts}`,
           html: notificationHtml({
             eyebrow: "BEAT DROP",
@@ -1200,6 +1570,7 @@ async function handleNotifyDrop(request, env) {
   const beatLabel = name === info.name ? info.display : `${name} — ${info.title}`;
   const bpm = info.bpm != null ? `${info.bpm} BPM` : "—";
   const keyLabel = info.key || "—";
+  const dropCta = SITE_URL + "/#" + beatAnchor(beatId);
   let sent = 0;
   for (const email of emails) {
     // Per-email dedup: never send the same beatId twice to the same address.
@@ -1218,6 +1589,7 @@ async function handleNotifyDrop(request, env) {
 `BPM: ${bpm}\nKey: ${keyLabel}\n` +
             `Preview: ${info.youtube || "—"}\n` +
             `Status: BEAT IS LIVE — LEASE NOW (pick 2, get 1 free)\n` +
+            `View: ${dropCta}\n` +
             `Date: ${ts}`,
         html: notificationHtml({
           eyebrow: "BEAT DROP",
@@ -1232,7 +1604,7 @@ async function handleNotifyDrop(request, env) {
             ["Status", "BEAT IS LIVE — LEASE NOW (PICK 2, GET 1 FREE)"],
             ["Date", esc(ts)]
           ],
-          cta: { label: "LEASE NOW", url: SITE_URL }
+          cta: { label: "LEASE NOW", url: dropCta }
         })
       });
       sent++;
@@ -1358,8 +1730,8 @@ async function handleStatus(url, env) {
     }));
 
     const licenses = [];
-    if (rec.items.some((i) => !i.isExclusive)) licenses.push({ tier: "lease", filename: "LICENSE.txt" });
-    if (rec.items.some((i) => i.isExclusive)) { licenses.push({ tier: "exclusive", filename: "EXCLUSIVE_LICENSE.txt" }); }
+    if (rec.items.some((i) => !i.isExclusive)) licenses.push({ tier: "lease", filename: "LICENSE.pdf" });
+    if (rec.items.some((i) => i.isExclusive)) { licenses.push({ tier: "exclusive", filename: "EXCLUSIVE_LICENSE.pdf" }); }
 
     return json(env, {
       status: "finished",
@@ -1456,6 +1828,8 @@ async function handleIpn(request, env, ctx) {
   await saveOrder(env, id, rec);
   return json(env, { ok: true });
 }
+
+export { buildLicensePdf, beatAnchor, orderDateLabel };
 
 export default {
   async fetch(request, env, ctx) {

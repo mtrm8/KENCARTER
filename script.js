@@ -591,7 +591,9 @@ function cardInner(beat, opts = {}, index = 0) {
     <div class="card__info">
       <div class="card__meta">
         <div class="card__name">
-          <span>${beat.title} <span class="card__name-alt">\u2014 ${beat.name}</span></span>
+          <a class="card__title-link" href="#${beatAnchorOf(beat)}" onclick="event.stopPropagation()">
+            <span>${beat.title} <span class="card__name-alt">\u2014 ${beat.name}</span></span>
+          </a>
           ${youtubeHTML(beat, released)}
         </div>
         <div class="card__specs">${specLine(beat)}</div>
@@ -645,6 +647,76 @@ function buildGrid() {
     card.innerHTML = cardInner(beat, { locked, archive }, i);
     grid.appendChild(card);
   });
+}
+
+const padAnchor = (n) => String(n).padStart(2, "0");
+
+function seasonOfBeat(id) {
+  if (SEASON2_BEATS.some((b) => b.id === id)) return "S02";
+  if (BEATS.some((b) => b.id === id)) return "S01";
+  return null;
+}
+
+function beatAnchorOf(beat) {
+  const m = /^(s2-)?beat(\d+)$/.exec(beat.id);
+  if (!m) return beat.id;
+  return `${m[1] ? "s2-" : ""}beat-${padAnchor(Number(m[2]))}`;
+}
+
+function beatFromAnchor(anchor) {
+  const clean = String(anchor || "").replace(/^#/, "");
+  const m = /^(s2-)?beat-(\d+)$/.exec(clean);
+  if (m) {
+    const season = m[1] ? "S02" : "S01";
+    const beatId = `${m[1] ? "s2-" : ""}beat${Number(m[2])}`;
+    return { season, beatId, exists: catalogFor(season).some((b) => b.id === beatId) };
+  }
+  const lm = /^(?:card-)?(s2-)?beat(\d+)$/.exec(clean);
+  if (lm) {
+    const season = lm[1] ? "S02" : "S01";
+    const beatId = `${lm[1] ? "s2-" : ""}beat${lm[2]}`;
+    return { season, beatId, exists: catalogFor(season).some((b) => b.id === beatId) };
+  }
+  return null;
+}
+
+// Opens a season's catalog directly, bypassing setSeason's ended/upcoming
+// gates, so store links into the S01 archive (view-only) still scroll.
+function openSeasonDirect(seasonId) {
+  const s = SEASONS.find((x) => x.id === seasonId);
+  if (!s) return;
+  if (seasonId !== selectedSeason) {
+    selected.clear();
+    exclusiveSelected.clear();
+    freePicks.clear();
+  }
+  selectedSeason = seasonId;
+  updateBrandSeasonLabel();
+  rebuildCatalog();
+  tickSeason();
+}
+
+// Scrolls to a beat and flashes its card. Mirrors the worker's email VIEW
+// links (SITE_URL + "/#" + beatAnchor). Upcoming seasons are ignored.
+function gotoBeatHash(anchor) {
+  const target = beatFromAnchor(anchor);
+  if (!target || !target.exists) return;
+  const s = SEASONS.find((x) => x.id === target.season);
+  if (!s || !isSeasonViewable(s)) return;
+  openSeasonDirect(target.season);
+  requestAnimationFrame(() => {
+    const card = $("card-" + target.beatId);
+    if (!card) return;
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    card.classList.remove("card--flash");
+    void card.offsetWidth;
+    card.classList.add("card--flash");
+  });
+}
+
+function handleDeepHash() {
+  const h = location.hash || "";
+  if (h.length > 1 && h.slice(1).trim()) gotoBeatHash(h.slice(1));
 }
 
 function toggle(id, type) {
@@ -1312,12 +1384,12 @@ function revealDownloads(s) {
     const a = document.createElement("a");
     a.className = "payscreen__dl";
     if (lic.tier === "exclusive") {
-      a.href = "EXCLUSIVE_LICENSE.txt";
-      a.download = "EXCLUSIVE_LICENSE.txt";
+      a.href = "EXCLUSIVE_LICENSE.pdf";
+      a.download = "EXCLUSIVE_LICENSE.pdf";
       a.textContent = "DOWNLOAD EXCLUSIVE LICENSE";
     } else {
-      a.href = "LICENSE.txt";
-      a.download = "LICENSE.txt";
+      a.href = "LICENSE.pdf";
+      a.download = "LICENSE.pdf";
       a.textContent = "DOWNLOAD LICENSE";
     }
     list.appendChild(a);
@@ -1488,6 +1560,8 @@ storeTimer = setInterval(storeTick, 1000);
 startBtc();
 loadMins();
 refreshExclusiveStatus();
+window.addEventListener("hashchange", handleDeepHash);
+handleDeepHash();
 
 if (!WORKER_URL) $("config-warning").hidden = false;
 
