@@ -120,15 +120,15 @@ if (workerCode.includes("LICENSE_TEXT") && workerCode.includes("Prod. by Ken Car
 } else {
   FAIL("Worker missing LICENSE_TEXT or license content");
 }
-if (workerCode.includes("licenseHtml()") && workerCode.includes("OFFICIAL LEASE LICENSE CONTRACT")) {
-  PASS("Worker has licenseHtml() function for email");
+if (workerCode.includes("function buildDeliveryMessage") && workerCode.includes("OFFICIAL LEASE LICENSE CONTRACT")) {
+  PASS("Worker has buildDeliveryMessage() for the branded delivery email");
 } else {
-  FAIL("Worker missing licenseHtml() function");
+  FAIL("Worker missing buildDeliveryMessage() function");
 }
-if (workerCode.includes("EXCLUSIVE_LICENSE_TEXT") && workerCode.includes("LicenseText: isExclusive ? EXCLUSIVE_LICENSE_TEXT : LICENSE_TEXT")) {
-  PASS("Worker returns exclusive lease license in API responses and email payload");
+if (workerCode.includes("EXCLUSIVE_LICENSE.txt") && workerCode.includes("tier: \"exclusive\"") && workerCode.includes("licenses")) {
+  PASS("Worker returns per-tier license attachments in API responses and email payload");
 } else {
-  FAIL("Worker missing exclusive license in API/email payload");
+  FAIL("Worker missing per-tier license attachment routing");
 }
 
 // 3. Verify HMAC verification logic
@@ -155,7 +155,8 @@ if (ipnHandler) {
     ["RELEASE_STATUS", "checks for RELEASE_STATUS === 'finished'"],
     ["rec.released = true", "sets rec.released = true on finished"],
     ["saveOrder.*id.*rec", "persists updated order to KV"],
-    ["ctx\\.waitUntil[\\s\\S]*sendDeliveryEmail", "sends email in background"],
+    ["ctx\\.waitUntil[\\s\\S]*deliverOrderEmail", "sends delivery email in background"],
+    ["url: map\\[beatId\\] \\|\\| null", "keeps missing BEAT_LINKS as null-url rows"],
     ["json.*{ ok: true, released: true, count", "returns success with count"]
   ];
   let ipnFail = 0;
@@ -180,9 +181,9 @@ if (statusHandler) {
   const checks = [
     ["rec.released", "checks if order is released"],
     ["beatLinks.*env", "fetches beat links from env.BEAT_LINKS"],
-    ["enrichedLinks\\s*=\\s*rec\\.items", "builds links array for response"],
-    ["EXCLUSIVE_LICENSE_TEXT", "selects exclusive license text for exclusive orders"],
-    ["license", "includes license in response"]
+    ["links\\s*=\\s*rec\\.items\\.map", "builds links array with id (incl. null urls)"],
+    ["tier: \"exclusive\", filename: \"EXCLUSIVE_LICENSE.txt\"", "exposes exclusive license attachment metadata"],
+    ["licenses", "includes licenses array in response"]
   ];
   let statusFail = 0;
   for (const [pattern, desc] of checks) {
@@ -198,15 +199,18 @@ if (statusHandler) {
   FAIL("Worker missing handleStatus function");
 }
 
-// 6. Verify delivery email includes license
-INFO("\nStep 6: Delivery email license inclusion");
-const emailFunc = sliceFn("async function sendDeliveryEmail", "async function saveOrder");
+// 6. Verify delivery email includes license attachments + retry plumbing
+INFO("\nStep 6: Delivery email license attachments & retry");
+const emailFunc = sliceFn("function buildDeliveryMessage", "async function sendEmailWithRetry");
 if (emailFunc) {
-  PASS("Worker has sendDeliveryEmail function");
+  PASS("Worker has buildDeliveryMessage function");
   const checks = [
-    ["deliveryHtml.*links", "includes download links in email"],
-    ["licenseHtml()", "adds formatted license to email"],
-    ["const text =", "builds plain-text body for Resend"]
+    ["attachments", "builds license attachments"],
+    ["base64Encode\\(LICENSE_TEXT\\)", "base64-encodes the lease license attachment"],
+    ["base64Encode\\(EXCLUSIVE_LICENSE_TEXT\\)", "base64-encodes the exclusive license attachment"],
+    ["OFFICIAL LEASE LICENSE CONTRACT", "notes the lease license in the email"],
+    ["const text =", "builds plain-text body for Resend"],
+    ["DELIVERY PENDING", "marks missing links as delivery-pending"]
   ];
   let emailFail = 0;
   for (const [pattern, desc] of checks) {
@@ -217,9 +221,40 @@ if (emailFunc) {
       PASS(`Email function ${desc}`);
     }
   }
-  if (emailFail === 0) PASS("Delivery email includes both links and full license");
+  if (emailFail === 0) PASS("Delivery email includes links + per-tier license attachments");
 } else {
-  FAIL("Worker missing sendDeliveryEmail function");
+  FAIL("Worker missing buildDeliveryMessage function");
+}
+
+if (workerCode.includes("async function sendEmailWithRetry")) {
+  PASS("Worker has sendEmailWithRetry (bounded backoff)");
+} else {
+  FAIL("Worker missing sendEmailWithRetry");
+}
+if (workerCode.includes("async function deliverOrderEmail")) {
+  PASS("Worker has deliverOrderEmail (records delivery state on order)");
+} else {
+  FAIL("Worker missing deliverOrderEmail");
+}
+if (workerCode.includes("async function assertExclusivesAvailable")) {
+  PASS("Worker has assertExclusivesAvailable (checkout exclusivity gate)");
+} else {
+  FAIL("Worker missing assertExclusivesAvailable");
+}
+if (workerCode.includes("async function handleCatalog")) {
+  PASS("Worker has handleCatalog (sold overview)");
+} else {
+  FAIL("Worker missing handleCatalog");
+}
+if (workerCode.includes("async function handleResend")) {
+  PASS("Worker has handleResend (admin resend)");
+} else {
+  FAIL("Worker missing handleResend");
+}
+if (workerCode.includes("url.pathname === \"/api/catalog\"") && workerCode.includes("url.pathname === \"/api/resend\"")) {
+  PASS("Dispatcher exposes /api/catalog and /api/resend routes");
+} else {
+  FAIL("Dispatcher missing /api/catalog or /api/resend route");
 }
 
 // Summary

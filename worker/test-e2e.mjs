@@ -44,6 +44,8 @@ const finish = (label, extra = "") =>
 const LEASE = readFileSync(root + "LICENSE.txt", "utf8").trim();
 const EXCLUSIVE = readFileSync(root + "EXCLUSIVE_LICENSE.txt", "utf8").trim();
 
+const decodeB64 = (b64) => Buffer.from(b64, "base64").toString("utf8").trim();
+
 class MockKV {
   constructor() { this.map = new Map(); }
   async put(k, v) { this.map.set(k, String(v)); return "OK"; }
@@ -78,9 +80,12 @@ const env = {
   RESEND_API_KEY: "test-resend-key",
   RESEND_FROM: "KEN CARTER <noreply@example.com>",
   IPN_CALLBACK_URL: "https://worker.local/api/ipn",
-  MIN_LOOKUP_DELAY_MS: "0"
+  MIN_LOOKUP_DELAY_MS: "0",
+  EMAIL_RETRY_DELAY_MS: "1",
+  EMAIL_MAX_ATTEMPTS: "3"
 };
 const SECRET = env.NOWPAYMENTS_IPN_SECRET;
+const ADMIN_SECRET = "kencarter-release-2026!"; // FALLBACK_DISPATCH_SECRET used by /api/resend auth
 
 const NP_API = "https://api.nowpayments.io/v1";
 const RESEND_API = "https://api.resend.com/emails";
@@ -238,6 +243,13 @@ check(
 );
 check(kvMix.payment_id === String(mock.paySeq), "order references NOWPayments payment_id");
 
+// Exclusive beats are reserved at checkout — server-side gate, not client trust
+check(await kv.get("exclusive-pending:" + EXCLUSIVE_BEAT) === mixOrderId, "checkout reserves exclusive beat (exclusive-pending:beat2 → order id)");
+const rivalOrder = await api("/api/checkout", { method: "POST", body: mixOrder });
+check(rivalOrder.res.status === 409 && /EXCLUSIVE RESERVED/.test(rivalOrder.data.error || ""), "rival checkout of a reserved exclusive rejected (409 EXCLUSIVE RESERVED)");
+const coinSwitch = await api("/api/checkout", { method: "POST", body: { ...mixOrder, order_id: mixOrderId } });
+check(coinSwitch.res.status === 200, "same-order re-checkout (coin switch) reuses its own reservation");
+
 // Lease-only cart (deliver the OTHER exclusive-less path)
 const leaseOrder = {
   email: "artist@example.com",
@@ -281,15 +293,26 @@ await drain();
 const exKey = await kv.get("exclusive:" + EXCLUSIVE_BEAT);
 check(exKey && JSON.parse(exKey).sold === true, `exclusive_sold persisted for ${EXCLUSIVE_BEAT} in KV`);
 check(await kv.get("exclusive:beat1") === null, "lease-only beat NOT marked exclusive_sold");
+check(await kv.get("exclusive-pending:" + EXCLUSIVE_BEAT) === null, "exclusive pending reservation cleared after release");
+
+const cat = await api("/api/catalog");
+check(cat.res.status === 200 && Array.isArray(cat.data.sold) && cat.data.sold.includes(EXCLUSIVE_BEAT), "/api/catalog reports sold exclusive after release");
+check(!cat.data.sold.includes("beat1"), "/api/catalog does not flag lease-only beats");
+const soldConflict = await api("/api/checkout", { method: "POST", body: mixOrder });
+check(soldConflict.res.status === 409 && /EXCLUSIVE SOLD/.test(soldConflict.data.error || ""), "re-buy of a sold exclusive rejected (409 EXCLUSIVE SOLD)");
 
 check(mock.emails.length === 1, "exactly one delivery email dispatched for mixed order");
 const mixEmail = mock.emails[0] || {};
 check(mixEmail.to === "producer@example.com", "email sent to purchaser address");
 check(mixEmail.from === "KEN CARTER <noreply@example.com>", "email uses verified RESEND_FROM sender");
 check(/LICENSE|EXCLUSIVE|CONTRACT/.test(mixEmail.text || ""), "email carries license text");
-check(mixEmail.text.trim().endsWith(EXCLUSIVE), "EXCLUSIVE order email ends with EXACT EXCLUSIVE_LICENSE.txt text");
+const mixAtt = (mixEmail.attachments || []).map((a) => ({ filename: a.filename, text: decodeB64(a.content) }));
+check(mixAtt.length === 2, "mixed delivery email attaches 2 license files (lease + exclusive)");
+check(mixAtt.some((a) => a.filename === "EXCLUSIVE_LICENSE.txt" && a.text === EXCLUSIVE), "EXCLUSIVE_LICENSE.txt attachment decodes byte-exact");
+check(mixAtt.some((a) => a.filename === "LICENSE.txt" && a.text === LEASE), "LICENSE.txt attachment decodes byte-exact");
 check((mixEmail.html || "").includes("EXCLUSIVE MASTER RIGHTS LICENSE"), "email HTML includes exclusive license block");
 check((mixEmail.html || "").includes("NORTH STAR"), "email HTML lists purchased beats");
+check((mixEmail.html || "").includes("OFFICIAL LEASE LICENSE CONTRACT"), "email HTML includes lease license block");
 check(/PAID — VERIFIED BY NOWPAYMENTS IPN/.test(mixEmail.html || ""), "email reports IPN-verified finished payment");
 check((mixEmail.html || "").includes("$329.85"), "email shows exact cart total");
 check(/^PAYMENT FINISHED —/.test(mixEmail.subject || ""), "delivery email subject flags payment finished");
@@ -311,7 +334,12 @@ const north = r.data.links.find((l) => l.title === "NORTH STAR");
 const rover = r.data.links.find((l) => l.title === "RED ROVER");
 check(north && north.isExclusive === true, "exclusive beat link flagged isExclusive");
 check(rover && rover.isExclusive === false, "lease beat link NOT flagged isExclusive");
-check(r.data.license && r.data.license.trim() === EXCLUSIVE, "mixed order status license === EXACT EXCLUSIVE_LICENSE.txt");
+check(
+  Array.isArray(r.data.licenses) &&
+    r.data.licenses.some((l) => l.tier === "lease" && l.filename === "LICENSE.txt") &&
+    r.data.licenses.some((l) => l.tier === "exclusive" && l.filename === "EXCLUSIVE_LICENSE.txt"),
+  "mixed order status exposes BOTH license tiers as attachments"
+);
 check((r.data.links[0].url || "").indexOf("http") === 0, "download links are absolute drive URLs");
 
 // Lease-only release → LICENSE.txt routing, no exclusive KV, no exclusive email
@@ -320,14 +348,21 @@ r = await api("/api/ipn", { method: "POST", body: JSON.stringify(leaseFinished),
 check(r.res.status === 200 && r.data.released === true, "lease IPN 'finished' releases order");
 await drain();
 const leaseEmail = mock.emails[1] || {};
-check(leaseEmail.text.trim().endsWith(LEASE), "LEASE order email ends with EXACT LICENSE.txt text");
+const leaseAtt = (leaseEmail.attachments || []).map((a) => ({ filename: a.filename, text: decodeB64(a.content) }));
+check(leaseAtt.length === 1 && leaseAtt[0].filename === "LICENSE.txt" && leaseAtt[0].text === LEASE, "LEASE order email attaches EXACT LICENSE.txt (no exclusive)");
 check(!leaseEmail.text.includes("EXCLUSIVE MASTER RIGHTS"), "lease email must NOT contain exclusive text");
 check((leaseEmail.html || "").includes("OFFICIAL LEASE LICENSE CONTRACT"), "lease email HTML uses lease license block");
 check((leaseEmail.html || "").includes("RED ROVER") && (leaseEmail.html || "").includes("MIDNIGHT"), "lease email lists all beats");
 check(await kv.get("exclusive:beat1") === null && await kv.get("exclusive:beat3") === null, "lease order creates NO exclusive_sold markers");
 
 const leaseStatus = await api("/api/status?order_id=" + leaseOrderId);
-check(leaseStatus.data.license && leaseStatus.data.license.trim() === LEASE, "lease order status license === EXACT LICENSE.txt");
+check(
+  Array.isArray(leaseStatus.data.licenses) &&
+    leaseStatus.data.licenses.length === 1 &&
+    leaseStatus.data.licenses[0].tier === "lease" &&
+    leaseStatus.data.licenses[0].filename === "LICENSE.txt",
+  "lease order status exposes only the lease license attachment"
+);
 check(leaseStatus.data.links.every((l) => !l.isExclusive), "lease order links have isExclusive=false");
 
 // Index-misalignment guard: released order where a beat has NO configured URL
@@ -349,10 +384,58 @@ const hangFinished = { ...ipnPayload, order_id: hangOrderId };
 r = await api("/api/ipn", { method: "POST", body: JSON.stringify(hangFinished), headers: { "x-nowpayments-sig": npSign(hangFinished, "|") } });
 await drain();
 const hangStatus = await api("/api/status?order_id=" + hangOrderId);
-// GHOST has no configured URL (dropped); PHANTOM at index 1 must still map to
-// its own drive link AND carry its own isExclusive=true flag, not the lease's.
-check(hangStatus.data.links.length === 1 && hangStatus.data.links[0].title === "PHANTOM", "exclusive beat correctly assigned despite no-URL lease at index 0");
-check(hangStatus.data.links[0].isExclusive === true, "exclusive flag survives beat URL gaps (fix regression guard)");
+// GHOST has no configured URL → url:null PENDING row (not silently dropped);
+// PHANTOM must still map to its own drive link AND carry isExclusive=true.
+check(hangStatus.data.links.length === 2, "released order returns a row for EVERY item incl. the no-URL beat");
+const ghost = hangStatus.data.links.find((l) => l.id === "nourl-ghost");
+const phantom = hangStatus.data.links.find((l) => l.title === "PHANTOM");
+check(ghost && ghost.url === null && ghost.isExclusive === false, "no-URL lease kept as url:null (delivery pending, not dropped)");
+check(phantom && phantom.isExclusive === true && /^http/.test(phantom.url || ""), "exclusive beat keeps its own drive link + isExclusive flag");
+check(
+  Array.isArray(hangStatus.data.licenses) &&
+    hangStatus.data.licenses.some((l) => l.tier === "exclusive" && l.filename === "EXCLUSIVE_LICENSE.txt") &&
+    hangStatus.data.licenses.some((l) => l.tier === "lease" && l.filename === "LICENSE.txt"),
+  "hangman status exposes both license attachment tiers"
+);
+
+// ───────────────────────────────────────────────────────────────────────────
+// H. Admin resend + delivery state + retry
+// ───────────────────────────────────────────────────────────────────────────
+INFO("H. ADMIN RESEND, DELIVERY STATE & RETRY");
+const resendUnauth = await api("/api/resend", { method: "POST", body: { order_id: mixOrderId } });
+check(resendUnauth.res.status === 401, "/api/resend without secret → 401");
+
+const resendUnknown = await api("/api/resend", { method: "POST", body: { order_id: "KC-NOPE-2" }, headers: { Authorization: "Bearer " + ADMIN_SECRET } });
+check(resendUnknown.res.status === 404, "/api/resend unknown order → 404");
+
+const resendMissing = await api("/api/resend", { method: "POST", body: {}, headers: { Authorization: "Bearer " + ADMIN_SECRET } });
+check(resendMissing.res.status === 400 && /MISSING ORDER ID/.test(resendMissing.data.error || ""), "/api/resend missing order_id → 400");
+
+const pendingResend = await api("/api/checkout", {
+  method: "POST",
+  body: { email: "pending@example.com", coinSym: "USDT", total: 14.95, subtotal: 14.95, discount: 0, labeled: ["X LEASE"], freeTitles: [], items: [{ id: "beat1", title: "X", type: "lease" }], exclusivePicks: [] }
+});
+const pendingResendId = pendingResend.data.order_id;
+const resendNotReleased = await api("/api/resend", { method: "POST", body: { order_id: pendingResendId }, headers: { Authorization: "Bearer " + ADMIN_SECRET } });
+check(resendNotReleased.res.status === 409 && /NOT RELEASED/.test(resendNotReleased.data.error || ""), "/api/resend on a non-released order → 409");
+
+const emailsBeforeResend = mock.emails.length;
+mock.resendFail = true;
+let resendRetry = await api("/api/resend", { method: "POST", body: { order_id: mixOrderId }, headers: { Authorization: "Bearer " + ADMIN_SECRET } });
+check(resendRetry.res.status === 200 && resendRetry.data.delivery && resendRetry.data.delivery.status === "failed", "resend during Resend outage responds with delivery.status=failed");
+const failedOrder = JSON.parse((await kv.get("order:" + mixOrderId)) || "{}");
+check(failedOrder.delivery && failedOrder.delivery.status === "failed" && !!failedOrder.delivery.error, "failed delivery state persisted on the order record");
+check(mock.emails.length - emailsBeforeResend >= Number(env.EMAIL_MAX_ATTEMPTS || 3), "retry honored EMAIL_MAX_ATTEMPTS on transient 5xx failures");
+mock.resendFail = false;
+
+const resendOk = await api("/api/resend", { method: "POST", body: { order_id: mixOrderId }, headers: { Authorization: "Bearer " + ADMIN_SECRET } });
+check(resendOk.res.status === 200 && resendOk.data.delivery.status === "sent", "resend succeeds once Resend recovers (delivery.status=sent)");
+check((mock.emails[mock.emails.length - 1] || {}).to === "producer@example.com", "resent email goes to the purchaser");
+const resentOrder = JSON.parse((await kv.get("order:" + mixOrderId)) || "{}");
+check(resentOrder.delivery && resentOrder.delivery.status === "sent", "order record reflects the successful resend");
+
+const resendGet = await api("/api/resend?secret=" + encodeURIComponent(ADMIN_SECRET) + "&order_id=" + encodeURIComponent(mixOrderId));
+check(resendGet.res.status === 200 && resendGet.data.delivery.status === "sent", "/api/resend supports GET with ?secret= query (built-in-mode retry)");
 
 // ───────────────────────────────────────────────────────────────────────────
 // G. CORS, mins, edge cases & error handling

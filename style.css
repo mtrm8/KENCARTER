@@ -1005,6 +1005,13 @@ button {
   color: var(--black);
 }
 
+.payscreen__dl--pending {
+  cursor: default;
+  color: var(--gray);
+  border-style: dashed;
+  border-color: #555;
+}
+
 .footer {
   margin-top: auto;
   padding: 40px 20px 96px;

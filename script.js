@@ -223,7 +223,11 @@ const isReleased = (b) => {
   if (isKenHolder && b.tag === "SEASON 02") return true;
   return !b.releaseAt || Date.now() >= releaseDate(b).getTime();
 };
-const isSoldOut = (b) => b.soldOut || b.left <= 0;
+// Exclusive-sold beats are retired from the catalog entirely (master rights
+// transferred). Tracked client-side from the worker's /api/catalog endpoint.
+const EXCLUSIVE_SOLD = new Set();
+const isExclusiveSold = (b) => EXCLUSIVE_SOLD.has(b.id);
+const isSoldOut = (b) => isExclusiveSold(b) || b.soldOut || b.left <= 0;
 
 const byNewest = (a, b) => BEATS.indexOf(b) - BEATS.indexOf(a);
 function renderOrder(list) {
@@ -454,6 +458,7 @@ function specLine(beat) {
 }
 
 function stockLine(beat) {
+  if (isExclusiveSold(beat)) return "SOLD EXCLUSIVELY \u2014 RIGHTS TRANSFERRED";
   if (isSoldOut(beat)) return `ALL ${beat.leases} LEASES SOLD`;
   if (beat.left <= LOW_STOCK_AT) return `ONLY ${beat.left} OF ${beat.leases} LEASES LEFT`;
   return `${beat.left} OF ${beat.leases} LEASES LEFT`;
@@ -543,21 +548,26 @@ function cardInner(beat, opts = {}, index = 0) {
 
   const released = isReleased(beat);
   const sold = isSoldOut(beat);
-  const mediaTag = sold
-    ? `<span class="card__tag card__tag--sold">SOLD OUT</span>`
-    : released
-      ? beat.tag
-        ? `<span class="card__tag">${beat.tag}</span>`
-        : ""
-      : `<div class="card__countdown">
-           <span class="card__countdown-label">DROPS ${dropLabel(releaseDate(beat))}</span>
-           <span class="card__countdown-timer" id="countdown-${beat.id}">${formatRemaining(releaseDate(beat) - Date.now())}</span>
-         </div>`;
+  const exclusiveGone = isExclusiveSold(beat);
+  const mediaTag = exclusiveGone
+    ? `<span class="card__tag card__tag--sold">SOLD OUT (EXCLUSIVE)</span>`
+    : sold
+      ? `<span class="card__tag card__tag--sold">SOLD OUT</span>`
+      : released
+        ? beat.tag
+          ? `<span class="card__tag">${beat.tag}</span>`
+          : ""
+        : `<div class="card__countdown">
+             <span class="card__countdown-label">DROPS ${dropLabel(releaseDate(beat))}</span>
+             <span class="card__countdown-timer" id="countdown-${beat.id}">${formatRemaining(releaseDate(beat) - Date.now())}</span>
+           </div>`;
 
   const isLeaseOn = selected.has(beat.id);
   const isExclusiveOn = exclusiveSelected.has(beat.id);
 
-  const action = sold
+  const action = exclusiveGone
+    ? `<button class="card__btn card__btn--sold" disabled>SOLD OUT (EXCLUSIVE)</button>`
+    : sold
     ? `<button class="card__btn card__btn--sold" disabled>SOLD OUT</button>`
     : released
       ? `<div class="card__actions">
@@ -643,6 +653,11 @@ function toggle(id, type) {
   const s = SEASONS.find((x) => x.id === selectedSeason);
   if (s && seasonState(s) === "ended") {
     alert("This season has ended. Catalog is view-only.");
+    return;
+  }
+
+  if (isExclusiveSold(beat)) {
+    alert("This beat has been sold exclusively \u2014 master rights transferred. No longer available.");
     return;
   }
 
@@ -1216,7 +1231,7 @@ function startNpPolling(orderId) {
           hasExclusive ? NP_STATUS_COPY.exclusive : NP_STATUS_COPY.finished,
           hasExclusive ? "exclusive" : "ok"
         );
-        revealDownloads(s.links || []);
+        revealDownloads(s);
         return;
       }
       const st = String(s.status || "").toLowerCase();
@@ -1270,35 +1285,65 @@ function prepDownloads() {
   $("payscreen-downloads").innerHTML = "";
 }
 
-function revealDownloads(links) {
+function revealDownloads(s) {
+  const links = (s && s.links) || [];
+  const licenses = (s && s.licenses) || [];
   const list = $("payscreen-downloads");
   list.innerHTML = "";
-  const hasExclusive = links && links.some((l) => l.isExclusive);
   (links || []).forEach((it) => {
+    // Missing BEAT_LINKS URLs surface as a pending row instead of silence.
+    if (it.url) {
+      const a = document.createElement("a");
+      a.className = "payscreen__dl";
+      a.href = it.url;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.textContent = `DOWNLOAD ${it.title}`;
+      list.appendChild(a);
+    } else {
+      const pending = document.createElement("div");
+      pending.className = "payscreen__dl payscreen__dl--pending";
+      pending.textContent = `DOWNLOAD ${it.title} \u2014 DELIVERY PENDING \u00b7 URL COMING`;
+      list.appendChild(pending);
+    }
+    if (it.isExclusive && it.id) EXCLUSIVE_SOLD.add(it.id);
+  });
+  (licenses || []).forEach((lic) => {
     const a = document.createElement("a");
     a.className = "payscreen__dl";
-    a.href = it.url;
-    a.target = "_blank";
-    a.rel = "noopener";
-    a.textContent = `DOWNLOAD ${it.title}`;
+    if (lic.tier === "exclusive") {
+      a.href = "EXCLUSIVE_LICENSE.txt";
+      a.download = "EXCLUSIVE_LICENSE.txt";
+      a.textContent = "DOWNLOAD EXCLUSIVE LICENSE";
+    } else {
+      a.href = "LICENSE.txt";
+      a.download = "LICENSE.txt";
+      a.textContent = "DOWNLOAD LICENSE";
+    }
     list.appendChild(a);
   });
-  if (hasExclusive) {
-    const a = document.createElement("a");
-    a.className = "payscreen__dl";
-    a.href = "EXCLUSIVE_LICENSE.txt";
-    a.download = "EXCLUSIVE_LICENSE.txt";
-    a.textContent = "DOWNLOAD EXCLUSIVE LICENSE";
-    list.appendChild(a);
-  } else if (links && links.length) {
-    const a = document.createElement("a");
-    a.className = "payscreen__dl";
-    a.href = "LICENSE.txt";
-    a.download = "LICENSE.txt";
-    a.textContent = "DOWNLOAD LICENSE";
-    list.appendChild(a);
+  if ((links && links.length) || (licenses && licenses.length)) {
+    $("payscreen-downloads-wrap").hidden = false;
   }
-  if (links && links.length) $("payscreen-downloads-wrap").hidden = false;
+  refreshExclusiveStatus();
+}
+
+// Polls the worker's catalog endpoint so exclusive-sold beats flip to SOLD OUT
+// on the grid moments after an IPN fulfillment — no manual refresh needed.
+// Diff-gated: only triggers a re-render when the sold set actually changes.
+let exclusiveRefreshTimer = null;
+async function refreshExclusiveStatus() {
+  if (exclusiveRefreshTimer) clearTimeout(exclusiveRefreshTimer);
+  if (!WORKER_URL) return;
+  try {
+    const data = await workerRequest("/api/catalog");
+    const sold = new Set(data && Array.isArray(data.sold) ? data.sold : []);
+    let changed = false;
+    sold.forEach((id) => { if (!EXCLUSIVE_SOLD.has(id)) { EXCLUSIVE_SOLD.add(id); changed = true; } });
+    EXCLUSIVE_SOLD.forEach((id) => { if (!sold.has(id)) { EXCLUSIVE_SOLD.delete(id); changed = true; } });
+    if (changed) render();
+  } catch {}
+  exclusiveRefreshTimer = setTimeout(refreshExclusiveStatus, 60000);
 }
 
 function markActiveTab(sym) {
@@ -1442,6 +1487,7 @@ render();
 storeTimer = setInterval(storeTick, 1000);
 startBtc();
 loadMins();
+refreshExclusiveStatus();
 
 if (!WORKER_URL) $("config-warning").hidden = false;
 

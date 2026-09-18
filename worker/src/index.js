@@ -84,6 +84,7 @@ const notifyKey = (beatId) => "notify-sub:" + beatId;      // subscribed emails 
 const notifiedKey = (beatId) => "notify-sent:" + beatId;   // drop notifications already sent (beat-level flag)
 const notifiedEmailKey = (beatId, email) =>                 // per-email dedup key
   `notify-sent:${beatId}:${email.toLowerCase()}`;
+const pendingExclusiveKey = (beatId) => "exclusive-pending:" + beatId; // checkout → IPN reservation for an exclusive-master-rights purchase
 
 function beatLinks(env) {
   try {
@@ -309,27 +310,20 @@ const utcOf = (v) => {
   return Number.isInteger(t) ? new Date(t).toUTCString() : "";
 };
 
-function deliveryHtml(rec, links) {
-  const rows =
-    `<tr><td style="padding:7px 0;font-size:11px;color:#888888;">ITEMS</td>` +
-    `<td align="right" style="padding:7px 0;font-size:12px;color:#ffffff;">${rec.items.length} × LIMITED LEASE</td></tr>` +
-    `<tr><td style="padding:7px 0;font-size:11px;color:#888888;">BEATS</td>` +
-    `<td align="right" style="padding:7px 0;font-size:12px;color:#ffffff;">${esc(rec.labeled.join(", "))}</td></tr>` +
-    `<tr><td style="padding:7px 0;font-size:11px;color:#888888;">FREE BEATS</td>` +
-    `<td align="right" style="padding:7px 0;font-size:12px;color:#ffffff;">${rec.freeTitles.length ? esc(rec.freeTitles.join(", ")) : "—"}</td></tr>` +
-    `<tr><td style="padding:7px 0;font-size:11px;color:#888888;">TOTAL PAID</td>` +
-    `<td align="right" style="padding:14px 0 7px;font-size:15px;font-weight:800;color:#ffffff;">${money(rec.total)}</td></tr>`;
-  const files = links
-    .map(
-      (l) =>
-        `<p style="margin:0 0 10px;"><a href="${esc(l.url)}" target="_blank" rel="noopener" style="color:#ffffff;font-weight:700;text-decoration:underline;">${esc(l.title)} → DOWNLOAD</a></p>`
-    )
-    .join("");
-  return (
-    `<table width="100%" style="border-collapse:collapse;">${rows}</table>` +
-    `<div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#888888;margin:18px 0 10px;">YOUR FILES — INSTANT DOWNLOAD</div>${files}` +
-    `<p style="margin:14px 0 0;font-size:12px;color:#888888;">Your official lease license contract accompanies this email.</p>`
-  );
+// Pause helper for bounded email-retry backoff (setTimeout is globals-available
+// in Workers; tests override EMAIL_RETRY_DELAY_MS so real sleeps stay tiny).
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Byte-safe base64 for email attachments. TextEncoder produces a Uint8Array;
+// chunking avoids call-stack limits when btoa-ing longer binary strings.
+function base64Encode(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = "";
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(bin);
 }
 
 // Shared dark/monochrome HTML template for notification emails
@@ -521,21 +515,117 @@ By downloading and using this beat, the Buyer acknowledges and agrees to all ter
 
 *Ken Carter — Producer — All Rights Reserved*`;
 
-function licenseHtml() {
-  const isExclusive = arguments[0]?.isExclusive || false;
-  const text = isExclusive ? EXCLUSIVE_LICENSE_TEXT : LICENSE_TEXT;
-  const label = isExclusive ? "EXCLUSIVE MASTER RIGHTS LICENSE — FULL TRANSFER" : "OFFICIAL LEASE LICENSE CONTRACT";
-  return (
-    `<div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#888888;margin:18px 0 10px;">${label}</div>` +
-    `<pre style="white-space:pre-wrap;font-size:11px;color:#ffffff;line-height:1.5;margin:0 0 14px;">${text}</pre>`
-  );
-}
+// Builds the full branded delivery email for a released order: dark logo shell,
+// payment-details box, per-beat download rows (tier badge + url), license
+// attachment chips, and a plain-text fallback. Returns everything sendEmail
+// needs — subject/html/text plus base64 attachments for every license tier in
+// the cart (lease + exclusive), so real license .txt files ride along with the
+// email instead of being inlined as unstyled <pre> blocks.
+function buildDeliveryMessage(rec, links, payment, orderId) {
+  const ts = new Date().toUTCString();
+  const pid = String(payment.payment_id || "");
+  const hasExclusive = rec.items.some((i) => i.isExclusive);
+  const hasLease = rec.items.some((i) => !i.isExclusive);
+  const total = money(rec.total);
+  const beats = (rec.labeled || []).join(", ");
+  const free = rec.freeTitles && rec.freeTitles.length ? rec.freeTitles.join(", ") : "—";
 
-function exclusiveLicenseHtml() {
-  return (
-    `<div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#888888;margin:18px 0 10px;">EXCLUSIVE MASTER RIGHTS LICENSE — FULL TRANSFER</div>` +
-    `<pre style="white-space:pre-wrap;font-size:11px;color:#ffffff;line-height:1.5;margin:0 0 14px;">${EXCLUSIVE_LICENSE_TEXT}</pre>`
-  );
+  const row = (label, value, last = false) =>
+    `<tr><td style="padding:10px 0;font-size:10px;line-height:1.4;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;color:#6b6b6b;${last ? "" : "border-bottom:1px solid #191919;"}vertical-align:top;">${esc(label)}</td>` +
+    `<td style="padding:10px 0;font-size:12px;line-height:1.5;color:#f2f2f2;text-align:right;font-weight:600;${last ? "" : "border-bottom:1px solid #191919;"}vertical-align:top;">${value}</td></tr>`;
+
+  const rows =
+    row("ORDER ID", esc(orderId)) +
+    row("PAYMENT ID", esc(pid)) +
+    row("PAID — VERIFIED BY NOWPAYMENTS IPN", `<span style="font-weight:800;color:#ffffff;">${total}</span>`) +
+    row("BEATS", esc(beats)) +
+    row("FREE BEATS", esc(free)) +
+    row("DATE", esc(ts), true);
+
+  const files = links
+    .map((l) => {
+      const badge = l.isExclusive
+        ? `<span style="display:inline-block;font-size:9px;letter-spacing:1.5px;font-weight:800;color:#000000;background-color:#f5f5f5;padding:2px 7px;border-radius:2px;margin-left:8px;vertical-align:middle;">EXCLUSIVE MASTER RIGHTS</span>`
+        : `<span style="display:inline-block;font-size:9px;letter-spacing:1.5px;font-weight:800;color:#8a8a8a;border:1px solid #2a2a2a;padding:2px 7px;border-radius:2px;margin-left:8px;vertical-align:middle;">LEASE</span>`;
+      const cta = l.url
+        ? `<a href="${esc(l.url)}" target="_blank" rel="noopener" style="color:#ffffff;font-weight:700;text-decoration:underline;">→ DOWNLOAD</a>`
+        : `<span style="color:#777777;font-weight:700;">↻ DELIVERY PENDING — URL COMING</span>`;
+      return (
+        `<p style="margin:0 0 10px;font-size:12px;color:#ffffff;">${esc(l.title)} ${badge}<br/>` +
+        `<span style="font-size:11px;color:#888888;">${cta}</span></p>`
+      );
+    })
+    .join("");
+
+  const licenseChips = [];
+  if (hasLease) licenseChips.push("OFFICIAL LEASE LICENSE CONTRACT");
+  if (hasExclusive) licenseChips.push("EXCLUSIVE MASTER RIGHTS LICENSE");
+  const licenseNote =
+    licenseChips.length
+      ? `<div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#888888;margin:18px 0 10px;">LICENSE ATTACHMENTS</div>` +
+        licenseChips
+          .map((c) => `<p style="margin:0 0 6px;font-size:11px;color:#ffffff;">▸ ${c}</p>`)
+          .join("") +
+        `<p style="margin:10px 0 0;font-size:12px;color:#888888;">Your official ${licenseChips.length === 1 ? "license contract is" : "license contracts are"} attached to this email. Keep it — it is your proof of purchase.</p>`
+      : "";
+
+  const html =
+    `<!DOCTYPE html><html lang="en">` +
+    `<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">` +
+    `<meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark">` +
+    `<title>PAYMENT FINISHED — ${total} — KEN CARTER</title></head>` +
+    `<body style="margin:0;padding:0;background-color:#000000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#ffffff;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">` +
+    `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">PAYMENT FINISHED — ${total} — KEN CARTER&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>` +
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#000000" style="background-color:#000000;border-collapse:collapse;">` +
+    `<tr><td align="center" style="padding:28px 12px;">` +
+    `<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;margin:0 auto;border:1px solid #222222;border-collapse:collapse;">` +
+    `<tr><td align="center" style="padding:36px 20px 24px;border-bottom:1px solid #1a1a1a;">` +
+    `<a href="${SITE_URL}" target="_blank" rel="noopener" style="text-decoration:none;">` +
+    `<img src="${LOGO_URL}" alt="KEN CARTER" width="170" style="display:block;width:170px;max-width:170px;height:auto;border:0;outline:none;text-decoration:none;" />` +
+    `</a></td></tr>` +
+    `<tr><td align="center" style="padding:30px 24px 0;">` +
+    `<div style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#7a7a7a;margin-bottom:10px;">KEN CARTER</div>` +
+    `<h1 style="font-size:17px;font-weight:600;letter-spacing:2px;text-transform:uppercase;margin:0;color:#ffffff;line-height:1.4;">PAYMENT FINISHED</h1>` +
+    `<p style="font-size:11px;color:#777777;letter-spacing:1px;text-transform:uppercase;margin:8px 0 0;">ORDER CONFIRMATION — LINKS RELEASED</p>` +
+    `</td></tr>` +
+    `<tr><td style="padding:26px 26px 34px;">` +
+    `<div style="background-color:#0b0b0b;border:1px solid #2a2a2a;padding:20px 22px;">` +
+    `<div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#8a8a8a;border-bottom:1px solid #222222;padding-bottom:10px;">PAYMENT DETAILS</div>` +
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">${rows}</table>` +
+    `</div>` +
+    `<div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#888888;margin:22px 0 10px;">YOUR FILES — INSTANT DOWNLOAD</div>${files}` +
+    `${licenseNote}` +
+    `<p style="margin:16px 0 0;font-size:12px;color:#888888;">Follow the instructions inside each license attachment before using a beat in a release.</p>` +
+    `</td></tr>` +
+    `<tr><td align="center" style="padding:26px 20px;border-top:1px solid #1a1a1a;background-color:#050505;">` +
+    `<p style="font-size:10px;color:#555555;margin:0 0 8px;letter-spacing:1px;">KEN CARTER — ALL RIGHTS RESERVED</p>` +
+    `<p style="font-size:10px;color:#434343;margin:0;"><a href="${SITE_URL}" target="_blank" rel="noopener" style="color:#666666;text-decoration:none;">kencarter.abrdns.com</a></p>` +
+    `</td></tr>` +
+    `</table></td></tr></table>` +
+    `</body></html>`;
+
+  const filesText = links
+    .map((l) => `${l.title}${l.isExclusive ? " [EXCLUSIVE MASTER RIGHTS]" : " [LEASE]"}: ${l.url || "DELIVERY PENDING — URL COMING"}`)
+    .join("\n");
+
+  const text =
+    `PAYMENT FINISHED — ORDER CONFIRMATION\n` +
+    `Order ID: ${orderId}\n` +
+    `Payment ID: ${pid}\n` +
+    `Total: ${total}\n` +
+    `Beats: ${beats}\n` +
+    `Free: ${free}\n` +
+    `Date: ${ts}\n\n` +
+    `YOUR FILES — INSTANT DOWNLOAD\n${filesText}\n\n` +
+    `License${licenseChips.length === 1 ? "" : "s"} included as attachments: ${licenseChips.join(", ") || "—"}`;
+
+  const subject = `PAYMENT FINISHED — ${total} — ${beats} — LINKS RELEASED`;
+
+  const attachments = [];
+  if (hasLease) attachments.push({ filename: "LICENSE.txt", content: base64Encode(LICENSE_TEXT) });
+  if (hasExclusive) attachments.push({ filename: "EXCLUSIVE_LICENSE.txt", content: base64Encode(EXCLUSIVE_LICENSE_TEXT) });
+
+  return { subject, html, text, attachments };
 }
 
 async function markBeatExclusiveSold(env, beatId) {
@@ -548,6 +638,28 @@ async function isBeatExclusiveSold(env, beatId) {
   return raw ? JSON.parse(raw).sold === true : false;
 }
 
+// Enforce exclusivity at checkout, BEFORE a NOWPayments invoice is created: an
+// exclusive beat can only be sold once and can only carry one in-flight
+// reservation at a time. A 48h TTL reservation (authored with the order id)
+// prevents a second checkout from grabbing the same beat while an earlier
+// purchase is still mid-payment, and self-heals if the buyer never pays.
+async function assertExclusivesAvailable(env, orderId, exclusiveItems) {
+  for (const item of exclusiveItems) {
+    if (await isBeatExclusiveSold(env, item.id)) {
+      const err = new Error(`EXCLUSIVE SOLD — ${item.id.toUpperCase()} HAS ALREADY BEEN SOLD EXCLUSIVELY`);
+      err.status = 409;
+      throw err;
+    }
+    const rawHolder = await Promise.resolve(env.ORDERS.get(pendingExclusiveKey(item.id))).catch(() => null);
+    if (rawHolder && rawHolder !== orderId) {
+      const err = new Error(`EXCLUSIVE RESERVED — ${item.id.toUpperCase()} IS BEING PURCHASED ANOTHER ORDER`);
+      err.status = 409;
+      throw err;
+    }
+    await env.ORDERS.put(pendingExclusiveKey(item.id), orderId, { expirationTtl: 60 * 60 * 48 });
+  }
+}
+
 // Emails go out via Resend (free tier: 3,000 emails/month), which delivers
 // straight to the customer — no auto-reply feature to configure. Requirements:
 //   1. RESEND_API_KEY: set with `npx wrangler secret put RESEND_API_KEY`.
@@ -557,7 +669,7 @@ async function isBeatExclusiveSold(env, beatId) {
 //      verified domain is required for customer-facing mail.
 // Responses are validated so a bad/missing key, unverified sender, or quota
 // hit surfaces as an error instead of failing silently.
-async function sendEmail(env, { to, subject, html, text = "" }) {
+async function sendEmail(env, { to, subject, html, text = "", attachments = [] }) {
   const apiKey = env.RESEND_API_KEY;
   if (!apiKey) throw new Error("RESEND_API_KEY NOT CONFIGURED");
   const from = env.RESEND_FROM;
@@ -565,6 +677,7 @@ async function sendEmail(env, { to, subject, html, text = "" }) {
   const body = { from, to, subject, reply_to: to };
   if (html) body.html = html;
   if (text) body.text = text;
+  if (Array.isArray(attachments) && attachments.length) body.attachments = attachments;
   const res = await fetch(RESEND_ENDPOINT, {
     method: "POST",
     headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
@@ -581,26 +694,50 @@ async function sendEmail(env, { to, subject, html, text = "" }) {
   return data;
 }
 
-async function sendDeliveryEmail(env, rec, links, payment, isExclusive = false) {
-  const invoiceHeader =
-    `<p style="margin:0 0 6px;font-size:11px;color:#888888;">PAID — VERIFIED BY NOWPAYMENTS IPN (finished) &middot; Payment ID ${esc(String(payment.payment_id || ""))} &middot; ${money(rec.total)} &middot; ${new Date().toUTCString()}</p>`;
-  const html =
-    invoiceHeader +
-    deliveryHtml(rec, links) +
-    (isExclusive ? exclusiveLicenseHtml() : licenseHtml(isExclusive));
-  const text =
-    `PAID — VERIFIED BY NOWPAYMENTS IPN (finished)\n` +
-    `Payment ID: ${payment.payment_id || ""}\n` +
-    `Total: ${money(rec.total)}\n` +
-    `Beats: ${(rec.labeled || []).join(", ")}\n` +
-    `Free: ${rec.freeTitles && rec.freeTitles.length ? rec.freeTitles.join(", ") : "—"}\n\n` +
-    (isExclusive ? EXCLUSIVE_LICENSE_TEXT : LICENSE_TEXT);
-  await sendEmail(env, {
-    to: rec.email,
-    subject: `PAYMENT FINISHED — ${money(rec.total)} — ${(rec.labeled || []).join(", ")} — LINKS RELEASED`,
-    html,
-    text
-  });
+// Bounded exponential backoff for transient Resend failures (429 quota/rate
+// limits, 5xx outages, network hiccups). Client errors (4xx) are permanent and
+// surface immediately. Attempt/sleep counts are env-overridable so CI tests
+// don't wait on real sleeps.
+async function sendEmailWithRetry(env, msg) {
+  const maxAttempts = Number(env.EMAIL_MAX_ATTEMPTS || "3");
+  const baseDelay = Number(env.EMAIL_RETRY_DELAY_MS || "1000");
+  let lastErr;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await sendEmail(env, msg);
+    } catch (err) {
+      lastErr = err;
+      const { status } = err;
+      if (status && status >= 400 && status < 500) throw err; // permanent config/validation failure
+      if (attempt < maxAttempts) await sleep(baseDelay * Math.pow(2, attempt - 1));
+    }
+  }
+  throw lastErr;
+}
+
+// Full delivery job used for IPN fulfillment and the /api/resend admin retry.
+// Never throws: outbound failure is recorded on the order (delivery.status)
+// so it is visible and resendable, while KV fulfillment has already happened.
+// Returns the recorded delivery state.
+async function deliverOrderEmail(env, rec, links, payment, orderId) {
+  let delivery;
+  try {
+    const msg = buildDeliveryMessage(rec, links, payment, orderId);
+    await sendEmailWithRetry(env, {
+      to: rec.email,
+      subject: msg.subject,
+      html: msg.html,
+      text: msg.text,
+      attachments: msg.attachments
+    });
+    delivery = { status: "sent", at: Date.now() };
+  } catch (err) {
+    console.error("DELIVERY EMAIL FAILED:" + orderId, err.message);
+    delivery = { status: "failed", error: err.message || String(err), at: Date.now() };
+  }
+  rec.delivery = delivery;
+  await saveOrder(env, orderId, rec);
+  return delivery;
 }
 
 async function saveOrder(env, id, rec) {
@@ -656,6 +793,10 @@ async function handleCheckout(request, env) {
   const id = order_id && /^KC-[A-Z0-9-]{3,32}$/.test(order_id)
     ? order_id
     : "KC-" + Date.now().toString(36).toUpperCase() + "-" + Math.random().toString(36).slice(2, 6).toUpperCase();
+
+  // Server-side exclusivity enforcement: never create an invoice for an
+  // exclusive beat that is already sold or reserved by another live checkout.
+  await assertExclusivesAvailable(env, id, exclusiveItems);
 
   // The client computes the final total (including any verified KEN holder
   // discount). Trust that value instead of re-deriving a discount here, so
@@ -1108,6 +1249,53 @@ async function handleNotifyDrop(request, env) {
   return json(env, { ok: true, beatId, notified: sent });
 }
 
+// Public, read-only catalog of exclusive availability. The storefront polls
+// this so already-sold exclusive beats render SOLD OUT immediately after an
+// IPN fulfillment, without a page reload.
+async function handleCatalog(env) {
+  const sold = [];
+  for (const beatId of Object.keys(BEAT_CATALOG)) {
+    if (await isBeatExclusiveSold(env, beatId)) sold.push(beatId);
+  }
+  return json(env, { sold });
+}
+
+// Admin retry for a failed delivery email. Authenticated exactly like
+// /api/release (Bearer header or ?secret= query, DISPATCH_SECRET). Only
+// released orders can be resent; the send reuses the same retry path and the
+// order's delivery state is refreshed with the outcome.
+async function handleResend(request, env) {
+  const url = new URL(request.url);
+  const auth = request.headers.get("Authorization") || "";
+  const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  const querySecret = (url.searchParams.get("secret") || "").trim();
+  const provided = bearer || querySecret;
+  const accepted =
+    (await secretMatches(env.DISPATCH_SECRET, provided)) ||
+    (await secretMatches(FALLBACK_DISPATCH_SECRET, provided));
+  if (!accepted) return json(env, { error: "UNAUTHORIZED" }, 401);
+
+  const orderId = request.method === "GET"
+    ? (url.searchParams.get("order_id") || "").trim()
+    : String((((await request.json().catch(() => null)) || {}).order_id || "")).trim();
+  if (!orderId) return json(env, { error: "MISSING ORDER ID" }, 400);
+
+  const raw = await env.ORDERS.get(orderKey(orderId));
+  if (!raw) return json(env, { error: "ORDER NOT FOUND" }, 404);
+  const rec = JSON.parse(raw);
+  if (!rec.released) return json(env, { error: "ORDER NOT RELEASED", order_id: orderId }, 409);
+
+  const map = beatLinks(env);
+  const links = rec.items.map(({ id: beatId, title, isExclusive }) => ({
+    id: beatId,
+    title,
+    url: map[beatId] || null,
+    isExclusive: isExclusive || false
+  }));
+  const delivery = await deliverOrderEmail(env, rec, links, { payment_id: rec.payment_id }, orderId);
+  return json(env, { ok: true, order_id: orderId, delivery });
+}
+
 // The automated drop schedule is driven by the BEAT_CATALOG releaseAt
 // timers — no manual cron, URL ping, or secret upkeep required. The optional
 // BEAT_DROPS secret still works as an override/extension (beatId → ISO) to
@@ -1159,24 +1347,25 @@ async function handleStatus(url, env) {
   // Links exist on this response ONLY after the IPN handler marked released.
   if (rec.released) {
     const map = beatLinks(env);
-    // Carry each beat's exclusive flag alongside its link so the response is
-    // always correctly paired even when a beat has no configured URL.
-    const enrichedLinks = rec.items
-      .map(({ id: beatId, title, isExclusive }) => {
-        const url = map[beatId];
-        return url ? { title, url, isExclusive: isExclusive || false } : null;
-      })
-      .filter(Boolean);
+    // Carry each beat's id + exclusive flag alongside its link, so the response
+    // is always correctly paired. Missing BEAT_LINKS URLs surface as url:null
+    // (delivery pending) instead of silently dropping the file.
+    const links = rec.items.map(({ id: beatId, title, isExclusive }) => ({
+      id: beatId,
+      title,
+      url: map[beatId] || null,
+      isExclusive: isExclusive || false
+    }));
 
-    const license = enrichedLinks.some((l) => l.isExclusive)
-      ? EXCLUSIVE_LICENSE_TEXT
-      : LICENSE_TEXT;
+    const licenses = [];
+    if (rec.items.some((i) => !i.isExclusive)) licenses.push({ tier: "lease", filename: "LICENSE.txt" });
+    if (rec.items.some((i) => i.isExclusive)) { licenses.push({ tier: "exclusive", filename: "EXCLUSIVE_LICENSE.txt" }); }
 
     return json(env, {
       status: "finished",
       released: true,
-      links: enrichedLinks,
-      license
+      links,
+      licenses
     });
   }
 
@@ -1223,26 +1412,45 @@ async function handleIpn(request, env, ctx) {
   rec.updated = Date.now();
 
   if (payload.payment_status === RELEASE_STATUS && !rec.released) {
+    // Fulfillment first: release is persisted BEFORE any best-effort cleanup,
+    // so the buyer's links/cashback are never held hostage by a KV hiccup.
     rec.released = true;
     await saveOrder(env, id, rec);
 
-    // Mark exclusive beats as sold in KV
     const exclusiveBeats = rec.items.filter((item) => item.isExclusive);
-    const exclusivePromises = exclusiveBeats.map((item) => markBeatExclusiveSold(env, item.id));
-    await Promise.all(exclusivePromises);
+
+    // Post-release bookkeeping is best-effort and non-fatal: mark exclusives
+    // sold (so catalog/checkout reject them) and clear this order's checkout
+    // reservation — but only if the pending key still points at THIS order.
+    try {
+      await Promise.all(exclusiveBeats.map((item) => markBeatExclusiveSold(env, item.id)));
+      for (const item of exclusiveBeats) {
+        const holder = await env.ORDERS.get(pendingExclusiveKey(item.id)).catch(() => null);
+        if (!holder || holder === id) {
+          await env.ORDERS.delete(pendingExclusiveKey(item.id));
+        }
+      }
+    } catch (err) {
+      console.error("Exclusive post-release bookkeeping failed:", err.message);
+    }
 
     const map = beatLinks(env);
-    const links = rec.items.map(({ id: beatId, title, isExclusive }) => ({ title, url: map[beatId], isExclusive })).filter((l) => l.url);
+    // Missing BEAT_LINKS entries stay as url:null rows so the buyer sees a
+    // pending download row rather than a silently dropped file.
+    const links = rec.items.map(({ id: beatId, title, isExclusive }) => ({
+      id: beatId,
+      title,
+      url: map[beatId] || null,
+      isExclusive: isExclusive || false
+    }));
     // ctx.waitUntil keeps delivery alive after this response returns
-    ctx.waitUntil(
-      sendDeliveryEmail(env, rec, links, payload, exclusiveBeats.length > 0).catch((e) => console.error("DELIVERY EMAIL FAILED:", e))
-    );
+    ctx.waitUntil(deliverOrderEmail(env, rec, links, payload, id));
     if (rec.walletAddress) {
       ctx.waitUntil(
         triggerKenCashback(env, rec, id).catch((e) => console.error("KEN CASHBACK ERROR:", e))
       );
     }
-    return json(env, { ok: true, released: true, count: links.length });
+    return json(env, { ok: true, released: true, count: links.length, links });
   }
 
   await saveOrder(env, id, rec);
@@ -1261,6 +1469,8 @@ export default {
       if (request.method === "POST" && url.pathname === "/api/notify-beat") return await handleNotifyBeat(request, env);
       if (request.method === "POST" && url.pathname === "/api/notify-drop") return await handleNotifyDrop(request, env);
       if ((request.method === "POST" || request.method === "GET") && url.pathname === "/api/release") return await handleReleaseBeat(request, env);
+      if ((request.method === "POST" || request.method === "GET") && url.pathname === "/api/resend") return await handleResend(request, env);
+      if (request.method === "GET" && url.pathname === "/api/catalog") return await handleCatalog(env);
       if (request.method === "GET" && url.pathname === "/api/status") return await handleStatus(url, env);
       if (request.method === "GET" && url.pathname === "/api/mins") return await handleMins(url, env);
       if (request.method === "POST" && url.pathname === "/api/ipn") return await handleIpn(request, env, ctx);
