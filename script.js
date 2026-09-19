@@ -530,7 +530,6 @@ function cardInner(beat, opts = {}, index = 0) {
         <span class="card__num">${pad(index + 1)} OF ${pad(CATALOG.length)}</span>
         <span class="card__tag card__tag--soon">DROPS SOON</span>
         <div class="card__countdown">
-          <span class="card__countdown-label">DROPS ${label} \u00b7 17:00 UTC</span>
           <span class="card__countdown-timer" id="countdown-${beat.id}">${formatRemaining(releaseDate(beat) - Date.now())}</span>
         </div>
       </div>
@@ -538,7 +537,7 @@ function cardInner(beat, opts = {}, index = 0) {
         <div class="card__meta">
           <div class="card__name"><span class="redact-bar" style="width:72%"></span></div>
           <div class="card__specs"><span class="redact-bar redact-bar--thin" style="width:48%"></span></div>
-          <div class="card__price">$${PRICE.toFixed(2)}</div>
+          <div class="card__price">${money(PRICE)}</div>
           <div class="btc-price"></div>
         </div>
         ${notifyForm}
@@ -558,7 +557,6 @@ function cardInner(beat, opts = {}, index = 0) {
           ? `<span class="card__tag">${beat.tag}</span>`
           : ""
         : `<div class="card__countdown">
-             <span class="card__countdown-label">DROPS ${dropLabel(releaseDate(beat))}</span>
              <span class="card__countdown-timer" id="countdown-${beat.id}">${formatRemaining(releaseDate(beat) - Date.now())}</span>
            </div>`;
 
@@ -1042,7 +1040,7 @@ function submitOrder(e) {
   ];
 
   const labeled = [
-    ...chosen.map((b) => `${b.title} LEASE${freePicks.has(b.id) ? " (FREE)" : ""}`),
+    ...chosen.map((b) => `${b.title} LEASE`),
     ...exclusiveChosen.map((b) => `${b.title} EXCLUSIVE`)
   ];
 
@@ -1050,7 +1048,6 @@ function submitOrder(e) {
     email,
     group: payGroup,
     labeled,
-    freeTitles: chosen.filter((b) => freePicks.has(b.id)).map((b) => b.title),
     subtotal,
     discount,
     total,
@@ -1241,7 +1238,6 @@ async function startNpPayment(sym) {
         coinSym: sym,
         total: payScreenOrder.total,
         labeled: payScreenOrder.labeled,
-        freeTitles: payScreenOrder.freeTitles || [],
         subtotal: payScreenOrder.subtotal,
         discount: payScreenOrder.discount,
         items: payScreenOrder.items,
@@ -2041,12 +2037,21 @@ if (walletModal) {
 
 (() => {
   const items = document.querySelectorAll(".ken-benefits__item");
-  if (items.length < 2) return;
-  const activate = () => {
-    const scrolled = window.scrollY > 10;
-    items[0].classList.toggle("ken-benefits__item--active", !scrolled);
-    items[1].classList.toggle("ken-benefits__item--active", scrolled);
-  };
-  window.addEventListener("scroll", activate, { passive: true });
-  activate();
+  items.forEach((item) => item.classList.add("ken-benefits__item--active"));
+
+  const sigVideo = document.querySelector(".signature-video");
+  if (sigVideo) {
+    sigVideo.addEventListener("ended", () => {
+      sigVideo.pause();
+      if (!isNaN(sigVideo.duration)) {
+        sigVideo.currentTime = sigVideo.duration;
+      }
+    });
+    sigVideo.addEventListener("timeupdate", () => {
+      if (sigVideo.duration && sigVideo.currentTime >= sigVideo.duration - 0.05) {
+        sigVideo.pause();
+        sigVideo.currentTime = sigVideo.duration;
+      }
+    });
+  }
 })();

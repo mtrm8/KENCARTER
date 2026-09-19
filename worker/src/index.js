@@ -902,7 +902,6 @@ async function buildDeliveryMessage(rec, links, payment, orderId) {
   const total = money(rec.total);
   const beats = (rec.labeled || []).join(", ");
   const beatsPdf = (rec.labeled || []).join("\n") || "—";
-  const free = rec.freeTitles && rec.freeTitles.length ? rec.freeTitles.join(", ") : "—";
 
   const row = (label, value, last = false) =>
     `<tr><td style="padding:10px 0;font-size:10px;line-height:1.4;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;color:#6b6b6b;${last ? "" : "border-bottom:1px solid #191919;"}vertical-align:top;">${esc(label)}</td>` +
@@ -1162,7 +1161,7 @@ async function triggerKenCashback(env, rec, orderId) {
 
 async function handleCheckout(request, env) {
   const body = await request.json().catch(() => null);
-  const { order_id, email, coinSym, total, labeled, freeTitles, subtotal, discount, items, exclusivePicks, walletAddress } = body || {};
+  const { order_id, email, coinSym, total, labeled, subtotal, discount, items, exclusivePicks, walletAddress } = body || {};
 
   if (!email || !EMAIL_RE.test(email)) return json(env, { error: "INVALID EMAIL" }, 400);
   const payCurrency = COIN_CODES[coinSym];
@@ -1217,7 +1216,6 @@ async function handleCheckout(request, env) {
     coin: payCurrency,
     total: finalTotal,
     labeled: labeled || [],
-    freeTitles: freeTitles || [],
     subtotal: subtotal ?? finalTotal,
     discount: discount ?? 0,
     items: allItems,
