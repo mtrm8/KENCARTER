@@ -911,7 +911,6 @@ async function buildDeliveryMessage(rec, links, payment, orderId) {
   const rows =
     row("PAID — VERIFIED BY NOWPAYMENTS IPN", `<span style="font-weight:800;color:#ffffff;">${total}</span>`) +
     row("BEATS", esc(beats)) +
-    row("FREE BEATS", esc(free)) +
     row("ORDER DATE", esc(dateLabel), true);
 
   const files = links
@@ -988,7 +987,6 @@ async function buildDeliveryMessage(rec, links, payment, orderId) {
     `PAYMENT FINISHED — ORDER CONFIRMATION\n` +
     `Total: ${total}\n` +
     `Beats: ${beats}\n` +
-    `Free: ${free}\n` +
     `Order date: ${dateLabel}\n\n` +
     `YOUR FILES — INSTANT DOWNLOAD\n${filesText}\n\n` +
     `License${licenseChips.length === 1 ? "" : "s"} included as PDF attachments: ${licenseChips.join(", ") || "—"}`;
