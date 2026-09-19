@@ -633,64 +633,77 @@ function pdfWrap(text, size) {
 // Render every page's content stream for a license PDF (frame on each page,
 // brand zone on page 1, metadata block, paginated terms, footers).
 function renderLicensePdf({ title, subtitle, licensee, orderDate, beatsText, totalText, terms, footerText, logo }) {
+  const BG = 0.035;                 // page base   ≈ #090909
+  const PANEL = 0.016;              // panel fill  ≈ #040404
+  const FRAME = 0.17;               // outlines    ≈ #2b2b2b
+  const LINE = 0.10;                // inner rules ≈ #1a1a1a
+  const INK_MAIN = 0.93;            // body text
+  const INK_SOFT = 0.6;             // secondary   (meta keys, subtitle)
+  const INK_DIM = 0.38;             // chrome      (heading strip, footers)
+
   const contentW = PDF_PAGE_W - 2 * PDF_M;
   const pages = [];
   let ops = [];
   let y = 0;
 
-  const startPage = () => { ops = []; pages.push(ops); y = PDF_PAGE_H - PDF_M - 8; frame(); };
-  const need = (h) => { if (y - h < PDF_M + 24) startPage(); };
-  const frame = () => {
-    ops.push(`q 0.86 0.86 0.86 RG 1.2 w ${PDF_M - 6} ${PDF_M - 6} ${contentW + 12} ${PDF_PAGE_H - 2 * PDF_M + 12} re S Q`);
-    ops.push(`q 0 0 0 RG 0.6 w ${PDF_M - 1} ${PDF_M - 1} ${contentW + 2} ${PDF_PAGE_H - 2 * PDF_M + 2} re S Q`);
+  const ls = (s) => String(s).split("").join(" ");
+
+  const startPage = () => {
+    ops = [];
+    pages.push(ops);
+    ops.push(`q ${BG} ${BG} ${BG} rg 0 0 ${PDF_PAGE_W} ${PDF_PAGE_H} re f Q`);
+    ops.push(`q ${FRAME} ${FRAME} ${FRAME} RG 1.1 w ${PDF_M - 5} ${PDF_M - 5} ${contentW + 10} ${PDF_PAGE_H - 2 * PDF_M + 10} re S Q`);
+    ops.push(`q ${LINE} ${LINE} ${LINE} RG 0.6 w ${PDF_M - 1} ${PDF_M - 1} ${contentW + 2} ${PDF_PAGE_H - 2 * PDF_M + 2} re S Q`);
+    y = PDF_PAGE_H - PDF_M - 8;
   };
-  const text = (str, x, yp, { f = 1, size = PDF_TERM_SIZE, gray = 0, w = contentW, align = "left" } = {}) => {
+  const need = (h) => { if (y - h < PDF_M + 24) startPage(); };
+  const text = (str, x, yp, { f = 1, size = PDF_TERM_SIZE, gray = INK_MAIN, w = contentW, align = "left" } = {}) => {
     const s = pdfText(str);
     let tx = x;
     if (align === "center") tx = x + (w - pdfW(s, size)) / 2;
     else if (align === "right") tx = x + w - pdfW(s, size);
     ops.push(`BT /F${f} ${size} Tf ${gray} g ${tx.toFixed(1)} ${yp.toFixed(1)} Td (${pdfEscape(s)}) Tj ET`);
   };
-  const hairline = (y1) => ops.push(`q 0.9 0.9 0.9 RG 0.4 w ${PDF_M} ${y1} ${contentW} 0 re S Q`);
+  const hairline = (y1) => ops.push(`q ${LINE} ${LINE} ${LINE} RG 0.6 w ${PDF_M} ${y1} ${contentW} 0 re S Q`);
 
   // ── Page 1: brand zone ──
   startPage();
   if (logo) {
-    const lw = 118;
-    const lh = Math.min(54, Math.max(26, lw * logo.heightPt / logo.widthPt));
+    const lh = 58;
+    const lw = lh * logo.widthPt / logo.heightPt;
     const lx = (PDF_PAGE_W - lw) / 2;
     const ly = y - lh;
-    ops.push(`q ${lx.toFixed(1)} ${ly.toFixed(1)} ${lw} ${lh.toFixed(1)} re W n /Im1 Do Q`);
+    ops.push(`q ${lw.toFixed(3)} 0 0 ${lh.toFixed(3)} ${lx.toFixed(3)} ${ly.toFixed(3)} cm /Im1 Do Q`);
     y = ly - 12;
-  } else {
-    text("KEN CARTER", PDF_M, y - 8, { f: 2, size: 17, w: contentW, align: "center" });
-    y -= 22;
-    hairline(y);
-    y -= 10;
   }
+  text(ls("BEAT LICENSE"), PDF_M, y, { f: 3, size: 7, gray: INK_DIM, w: contentW, align: "center" });
+  y -= 9;
+  hairline(y);
+  y -= 12;
 
   // ── Title + subtitle ──
-  need(46);
+  need(54);
   y -= 8;
-  text(title, PDF_M, y, { f: 2, size: 12.5 });
+  text(String(title).toUpperCase(), PDF_M, y, { f: 2, size: 12, gray: INK_MAIN });
   y -= 16;
-  text(subtitle, PDF_M, y, { f: 3, size: 8, gray: 0.42 });
+  text(String(subtitle).toUpperCase(), PDF_M, y, { f: 3, size: 6.8, gray: INK_SOFT });
   y -= 12;
   hairline(y);
   y -= 16;
 
-  // ── Metadata block (licensee, exact order date, purchased beats, paid) ──
+  // ── Agreement details ──
   const meta = [
     ["LICENSEE", licensee || "—"],
     ["ORDER DATE", orderDate || "—"],
     ["BEATS LICENSED", beatsText || "—"],
     ["AMOUNT PAID", totalText || "—"]
   ];
+  const META_HEADING = 20;
   let metaRows, metaTop, metaH, cursor;
   for (;;) {
-    need(meta.length * 26 + 28);
+    need(meta.length * 26 + META_HEADING + 24);
     metaTop = y;
-    cursor = metaTop - 10;
+    cursor = metaTop - META_HEADING;
     metaRows = meta.map(([k, v]) => {
       const lines = pdfWrap(v, 8.6);
       const rh = 16 + lines.length * 12 + 4;
@@ -698,41 +711,48 @@ function renderLicensePdf({ title, subtitle, licensee, orderDate, beatsText, tot
       cursor = rowTop;
       return { k, lines, rh, rowTop };
     });
-    metaH = metaTop - cursor + 10;
+    metaH = metaTop - cursor + 8;
     if (y - metaH >= PDF_M + 24) break;
     startPage();
   }
-  ops.push(`q 0.967 0.967 0.967 rg ${PDF_M} ${cursor.toFixed(1)} ${contentW} ${metaH} re f Q`);
-  ops.push(`q 0 0 0 RG 0.7 w ${PDF_M} ${cursor.toFixed(1)} ${contentW} ${metaH} re S Q`);
+  const panelBottom = cursor - 6;
+  ops.push(`q ${PANEL} ${PANEL} ${PANEL} rg ${PDF_M} ${panelBottom.toFixed(1)} ${contentW} ${(metaTop - panelBottom).toFixed(1)} re f Q`);
+  ops.push(`q ${FRAME} ${FRAME} ${FRAME} RG 0.9 w ${PDF_M} ${panelBottom.toFixed(1)} ${contentW} ${(metaTop - panelBottom).toFixed(1)} re S Q`);
+  text("AGREEMENT DETAILS", PDF_M + 13, metaTop - 15, { f: 2, size: 6.4, gray: INK_DIM });
+  ops.push(`q ${LINE} ${LINE} ${LINE} RG 0.5 w ${PDF_M + 13} ${(metaTop - META_HEADING + 2).toFixed(1)} ${contentW - 13} 0 re S Q`);
   metaRows.forEach((r, i) => {
-    text(r.k, PDF_M + 11, r.rowTop + r.rh - 10, { f: 2, size: 6.6, gray: 0.42 });
+    text(r.k, PDF_M + 13, r.rowTop + r.rh - 10, { f: 2, size: 6, gray: INK_SOFT });
     r.lines.forEach((ln, li) => {
-      text(ln, PDF_M + 11, r.rowTop + r.rh - 22 - li * 12, { f: 1, size: 8.6 });
+      text(ln, PDF_M + 13, r.rowTop + r.rh - 22 - li * 12, { f: 1, size: 8.6, gray: INK_MAIN });
     });
     if (i < metaRows.length - 1) hairline(r.rowTop);
   });
-  y = metaTop - metaH - 14;
+  y = metaTop - metaH - 16;
 
-  // ── License terms (paginated) ──
+  // ── License terms ──
   need(20);
-  text("LICENSE TERMS & CONDITIONS", PDF_M, y, { f: 2, size: 9.2 });
-  y -= 15;
+  text("LICENSE & TERMS", PDF_M, y, { f: 2, size: 9, gray: INK_MAIN });
+  y -= 16;
   for (const para of terms) {
     const size = para.bold ? 8.9 : PDF_TERM_SIZE;
     for (const ln of pdfWrap(para.text, size)) {
       need(13);
-      text(ln, PDF_M, y, { f: para.bold ? 2 : 1, size });
+      text(ln, PDF_M, y, { f: para.bold ? 2 : 1, size, gray: para.bold ? INK_MAIN : 0.86 });
       y -= 13;
     }
     y -= 4;
   }
 
-  // ── Footers (needs the final page count) ──
+  // ── Footers ──
   pages.forEach((page, i) => {
-    page.push(`BT /F1 6.8 Tf 0.45 g ${PDF_M} 40 Td (${pdfStr(footerText)}) Tj ET`);
+    if (i > 0) {
+      page.push(`q ${LINE} ${LINE} ${LINE} RG 0.5 w ${PDF_M} ${(PDF_PAGE_H - PDF_M - 8).toFixed(1)} ${contentW} 0 re S Q`);
+    }
+    page.push(`q ${LINE} ${LINE} ${LINE} RG 0.5 w ${PDF_M} 52 ${contentW} 0 re S Q`);
+    page.push(`BT /F2 6.2 Tf ${INK_DIM} g ${PDF_M} 42 Td (${pdfStr(ls(footerText))}) Tj ET`);
     const pageLabel = `PAGE ${i + 1} OF ${pages.length}`;
-    const px = PDF_PAGE_W - PDF_M - pdfW(pageLabel, 6.8);
-    page.push(`BT /F1 6.8 Tf 0.45 g ${px.toFixed(1)} 40 Td (${pdfStr(pageLabel)}) Tj ET`);
+    const px = PDF_PAGE_W - PDF_M - pdfW(pageLabel, 6.2);
+    page.push(`BT /F1 6.2 Tf ${INK_DIM} g ${px.toFixed(1)} 42 Td (${pdfStr(pageLabel)}) Tj ET`);
   });
 
   return pages;
@@ -897,16 +917,18 @@ async function buildDeliveryMessage(rec, links, payment, orderId) {
   const files = links
     .map((l) => {
       const badge = l.isExclusive
-        ? `<span style="display:inline-block;font-size:9px;letter-spacing:1.5px;font-weight:800;color:#000000;background-color:#f5f5f5;padding:2px 7px;border-radius:2px;margin-left:8px;vertical-align:middle;">EXCLUSIVE MASTER RIGHTS</span>`
-        : `<span style="display:inline-block;font-size:9px;letter-spacing:1.5px;font-weight:800;color:#8a8a8a;border:1px solid #2a2a2a;padding:2px 7px;border-radius:2px;margin-left:8px;vertical-align:middle;">LEASE</span>`;
+        ? `<span style="display:inline-block;font-size:9px;letter-spacing:1.5px;font-weight:800;color:#000000;background-color:#ffffff;padding:2px 7px;border-radius:2px;margin-left:8px;vertical-align:middle;">EXCLUSIVE MASTER RIGHTS</span>`
+        : `<span style="display:inline-block;font-size:9px;letter-spacing:1.5px;font-weight:800;color:#ffffff;border:1px solid #444444;padding:2px 7px;border-radius:2px;margin-left:8px;vertical-align:middle;">LEASE</span>`;
       const cta = l.url
-        ? `<a href="${esc(l.url)}" target="_blank" rel="noopener" style="color:#ffffff;font-weight:700;text-decoration:underline;">→ DOWNLOAD</a>`
+        ? `<a href="${esc(l.url)}" target="_blank" rel="noopener" style="display:inline-block;background:#ffffff;color:#000000;padding:10px 20px;font-size:11px;font-weight:800;text-decoration:none;letter-spacing:1.5px;margin-top:8px;">↓ DOWNLOAD ${esc(l.title)} — WAV / MP3</a>`
         : `<span style="color:#777777;font-weight:700;">↻ DELIVERY PENDING — URL COMING</span>`;
       const view = `${SITE_URL}/#${beatAnchor(l.id)}`;
       return (
-        `<p style="margin:0 0 10px;font-size:12px;color:#ffffff;">${esc(l.title)} ${badge}<br/>` +
-        `<span style="font-size:11px;color:#888888;">${cta} <span style="color:#3a3a3a;">\u00b7</span> ` +
-        `<a href="${esc(view)}" target="_blank" rel="noopener" style="color:#b9b9b9;font-weight:600;text-decoration:underline;">VIEW ${esc(l.title)} →</a></span></p>`
+        `<div style="margin:0 0 16px;padding:14px;background:#0d0d0d;border:1px solid #262626;">` +
+        `<p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#ffffff;">${esc(l.title)} ${badge}</p>` +
+        `<div>${cta}</div>` +
+        `<div style="margin-top:8px;"><a href="${esc(view)}" target="_blank" rel="noopener" style="font-size:10px;color:#888888;text-decoration:underline;letter-spacing:0.5px;">VIEW ${esc(l.title)} IN STORE →</a></div>` +
+        `</div>`
       );
     })
     .join("");
@@ -1038,7 +1060,16 @@ async function sendEmail(env, { to, subject, html, text = "", attachments = [] }
   // so SPF/DKIM/DMARC authenticate; an explicit RESEND_FROM env override wins.
   const from = resendFrom(env);
   if (!from) throw new Error("RESEND_FROM NOT CONFIGURED");
-  const body = { from, to, subject, reply_to: to };
+  const body = {
+    from,
+    to,
+    subject,
+    reply_to: from,
+    headers: {
+      "List-Unsubscribe": "<mailto:support@kencarter.abrdns.com>",
+      "X-Entity-Ref-ID": "ken-carter-order-" + Date.now()
+    }
+  };
   if (html) body.html = html;
   if (text) body.text = text;
   if (Array.isArray(attachments) && attachments.length) body.attachments = attachments;
@@ -1829,7 +1860,7 @@ async function handleIpn(request, env, ctx) {
   return json(env, { ok: true });
 }
 
-export { buildLicensePdf, beatAnchor, orderDateLabel };
+export { buildLicensePdf, buildDeliveryMessage, beatAnchor, orderDateLabel };
 
 export default {
   async fetch(request, env, ctx) {
