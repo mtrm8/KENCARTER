@@ -497,7 +497,7 @@ The Buyer agrees to:
 
 ### 8. Delivery Confirmation
 Upon successful payment verification and delivery:
-- The Buyer will receive: **WAV/MP3 files (untagged) + Exclusive_License.txt**
+- The Buyer will receive: **WAV files (untagged) + Exclusive_License.txt**
 - The beat will be **permanently removed** from the Ken Carter beat store
 - The Buyer assumes **full ownership** of the master recording
 
@@ -920,7 +920,7 @@ async function buildDeliveryMessage(rec, links, payment, orderId) {
         ? `<span style="display:inline-block;font-size:9px;letter-spacing:1.5px;font-weight:800;color:#000000;background-color:#ffffff;padding:2px 7px;border-radius:2px;margin-left:8px;vertical-align:middle;">EXCLUSIVE MASTER RIGHTS</span>`
         : `<span style="display:inline-block;font-size:9px;letter-spacing:1.5px;font-weight:800;color:#ffffff;border:1px solid #444444;padding:2px 7px;border-radius:2px;margin-left:8px;vertical-align:middle;">LEASE</span>`;
       const cta = l.url
-        ? `<a href="${esc(l.url)}" target="_blank" rel="noopener" style="display:inline-block;background:#ffffff;color:#000000;padding:10px 20px;font-size:11px;font-weight:800;text-decoration:none;letter-spacing:1.5px;margin-top:8px;">↓ DOWNLOAD ${esc(l.title)} — WAV / MP3</a>`
+        ? `<a href="${esc(l.url)}" target="_blank" rel="noopener" style="display:inline-block;background:#ffffff;color:#000000;padding:10px 20px;font-size:11px;font-weight:800;text-decoration:none;letter-spacing:1.5px;margin-top:8px;">↓ DOWNLOAD ${esc(l.title)} — WAV</a>`
         : `<span style="color:#777777;font-weight:700;">↻ DELIVERY PENDING — URL COMING</span>`;
       const view = `${SITE_URL}/#${beatAnchor(l.id)}`;
       return (

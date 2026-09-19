@@ -25,8 +25,8 @@ html {
 
 body {
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  background: var(--white);
-  color: var(--black);
+  background: var(--black);
+  color: var(--white);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   min-height: 100vh;
@@ -90,9 +90,9 @@ button {
   justify-content: center;
   align-items: center;
   padding: 40px 20px 32px;
-  border-bottom: 1px solid var(--hairline);
+  border-bottom: 1px solid #222;
   position: relative;
-  background: var(--white);
+  background: var(--black);
 }
 
 .header__inner {
@@ -115,9 +115,9 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: var(--white);
-  color: var(--black);
-  border: 1px solid var(--black);
+  background: var(--black);
+  color: var(--white);
+  border: 1px solid var(--white);
   padding: 8px 16px;
   font-size: 11px;
   font-weight: 800;
@@ -128,7 +128,7 @@ button {
 }
 
 .brand-season-btn:hover {
-  background: var(--black);
+  background: #222;
   color: var(--white);
 }
 
@@ -352,19 +352,20 @@ button {
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  border-top: 1px solid var(--hairline);
-  border-left: 1px solid var(--hairline);
+  border-top: 1px solid #222;
+  border-left: 1px solid #222;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
 }
 
 .card {
-  background: var(--white);
+  background: var(--black);
+  color: var(--white);
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--hairline);
-  border-bottom: 1px solid var(--hairline);
+  border-right: 1px solid #222;
+  border-bottom: 1px solid #222;
   touch-action: manipulation;
 }
 
@@ -384,8 +385,9 @@ button {
   position: absolute;
   top: 10px;
   left: 10px;
-  background: var(--white);
-  border: 1px solid var(--black);
+  background: var(--black);
+  color: var(--white);
+  border: 1px solid var(--white);
   font-size: 10px;
   padding: 4px 8px;
 }
@@ -622,9 +624,9 @@ button {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border: 1px solid var(--black);
-  background: var(--white);
-  color: var(--black);
+  border: 1px solid var(--white);
+  background: var(--black);
+  color: var(--white);
   font-family: inherit;
   font-size: 10px;
   font-weight: 700;
@@ -639,15 +641,15 @@ button {
 }
 
 .card__btn:hover:not([disabled]) {
-  background: #f0f0f0;
-  color: var(--black);
+  background: #222;
+  color: var(--white);
 }
 
 .card__btn--active,
 .card__btn--active:hover {
-  background: var(--black) !important;
-  color: var(--white) !important;
-  border-color: var(--black) !important;
+  background: var(--white) !important;
+  color: var(--black) !important;
+  border-color: var(--white) !important;
 }
 
 .card__btn-check {
@@ -658,8 +660,8 @@ button {
 .card__btn[disabled] {
   opacity: 0.35;
   cursor: not-allowed;
-  background: var(--white);
-  color: var(--black);
+  background: var(--black);
+  color: var(--white);
 }
 
 .card--sold .card__btn[disabled],
@@ -1087,7 +1089,7 @@ button {
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(2px);
 }
 
@@ -1098,8 +1100,9 @@ button {
   bottom: 0;
   z-index: 60;
   width: min(440px, 100%);
-  background: var(--white);
-  border-left: 1px solid var(--black);
+  background: var(--black);
+  color: var(--white);
+  border-left: 1px solid #222;
   display: flex;
   flex-direction: column;
   transform: translateX(100%);
@@ -1115,9 +1118,10 @@ button {
   justify-content: space-between;
   align-items: center;
   padding: 18px 20px;
-  border-bottom: 1px solid var(--black);
+  border-bottom: 1px solid #222;
   font-size: 13px;
   font-weight: 700;
+  color: var(--white);
 }
 
 .drawer__close {
@@ -1126,7 +1130,7 @@ button {
   font-size: 26px;
   line-height: 1;
   padding: 0 2px;
-  color: var(--black);
+  color: var(--white);
 }
 
 .drawer__body {
@@ -1146,7 +1150,7 @@ button {
   align-items: center;
   gap: 14px;
   padding: 12px 0;
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid #222;
   font-size: 12px;
 }
 
@@ -1154,7 +1158,7 @@ button {
   width: 52px;
   height: 52px;
   object-fit: cover;
-  border: 1px solid var(--black);
+  border: 1px solid #333;
 }
 
 .cart-items__name {
@@ -1275,19 +1279,20 @@ button {
   font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  border: 1px solid var(--black);
-  background: var(--white);
+  border: 1px solid #444;
+  background: #0c0c0c;
+  color: var(--white);
   padding: 14px;
   outline: none;
 }
 
 .order-form__input:focus {
-  box-shadow: inset 0 0 0 1px var(--black);
+  box-shadow: inset 0 0 0 1px var(--white);
 }
 
 .order-form__input.invalid {
-  border-color: var(--black);
-  background: #f2f2f2;
+  border-color: #ff4444;
+  background: #1a0808;
 }
 
 .paygrid {
@@ -1297,7 +1302,7 @@ button {
 }
 
 .paygrid.invalid {
-  outline: 1px solid var(--black);
+  outline: 1px solid var(--white);
   outline-offset: 3px;
 }
 
@@ -1307,9 +1312,9 @@ button {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  border: 1px solid var(--black);
-  background: var(--white);
-  color: var(--black);
+  border: 1px solid #444;
+  background: var(--black);
+  color: var(--white);
   font-size: 8px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -1326,14 +1331,14 @@ button {
 }
 
 .paygrid__opt:hover {
-  background: var(--black);
-  color: var(--white);
+  background: var(--white);
+  color: var(--black);
 }
 
 .paygrid__opt--on,
 .paygrid__opt--on:hover {
-  background: var(--black);
-  color: var(--white);
+  background: var(--white);
+  color: var(--black);
 }
 
 .paygrid__opt--off,
@@ -1527,9 +1532,10 @@ button {
 }
 
 .season-drawer-card {
-  border: 1px solid var(--black);
+  border: 1px solid #333;
   padding: 16px;
-  background: var(--white);
+  background: #0d0d0d;
+  color: var(--white);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1537,7 +1543,8 @@ button {
 
 .season-drawer-card--active {
   border-width: 2px;
-  background: #fcfcfc;
+  border-color: var(--white);
+  background: #141414;
 }
 
 .season-drawer-card__header {
@@ -1558,24 +1565,24 @@ button {
   letter-spacing: 0.16em;
   padding: 3px 6px;
   border-radius: 3px;
-  border: 1px solid var(--black);
+  border: 1px solid var(--white);
 }
 
 .season-drawer-card__badge--live {
-  background: var(--black);
-  color: var(--white);
+  background: var(--white);
+  color: var(--black);
 }
 
 .season-drawer-card__badge--ended {
-  background: #e8e8e8;
+  background: #222;
   color: var(--gray);
-  border-color: var(--gray);
+  border-color: #444;
 }
 
 .season-drawer-card__badge--upcoming {
-  background: var(--white);
-  color: var(--gray);
-  border-color: var(--gray);
+  background: var(--black);
+  color: var(--white);
+  border-color: #555;
 }
 
 .season-drawer-card__desc {
@@ -1594,17 +1601,17 @@ button {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.1em;
-  background: var(--black);
-  color: var(--white);
-  border: 1px solid var(--black);
+  background: var(--white);
+  color: var(--black);
+  border: 1px solid var(--white);
   cursor: pointer;
   text-transform: uppercase;
 }
 
 .season-drawer-card__btn:disabled {
-  background: #e5e5e5;
-  color: var(--gray);
-  border-color: #e5e5e5;
+  background: #222;
+  color: #666;
+  border-color: #222;
   cursor: not-allowed;
 }
 
@@ -1646,9 +1653,9 @@ button {
   font-size: 11px;
   font-family: inherit;
   text-transform: uppercase;
-  border: 1px solid var(--black);
-  background: var(--white);
-  color: var(--black);
+  border: 1px solid #444;
+  background: #0c0c0c;
+  color: var(--white);
   outline: none;
 }
 
@@ -1658,15 +1665,15 @@ button {
   font-weight: 700;
   font-family: inherit;
   text-transform: uppercase;
-  background: var(--black);
-  color: var(--white);
-  border: 1px solid var(--black);
+  background: var(--white);
+  color: var(--black);
+  border: 1px solid var(--white);
   cursor: pointer;
   white-space: nowrap;
 }
 
 .season-alert-btn:hover {
-  background: #333;
+  background: #ccc;
 }
 
 .season-alert-subscribed-wrap {
@@ -1685,9 +1692,9 @@ button {
   font-weight: 700;
   font-family: inherit;
   text-transform: uppercase;
-  background: var(--black);
+  background: #1a1a1a;
   color: var(--white);
-  border: 1px solid var(--black);
+  border: 1px solid #444;
   cursor: default;
   letter-spacing: 0.1em;
   text-align: center;
@@ -1718,9 +1725,9 @@ button {
   font-size: 10px;
   font-family: inherit;
   text-transform: uppercase;
-  border: 1px solid var(--black);
-  background: var(--white);
-  color: var(--black);
+  border: 1px solid #444;
+  background: #0c0c0c;
+  color: var(--white);
   outline: none;
 }
 
@@ -1730,15 +1737,15 @@ button {
   font-weight: 700;
   font-family: inherit;
   text-transform: uppercase;
-  background: var(--black);
-  color: var(--white);
-  border: 1px solid var(--black);
+  background: var(--white);
+  color: var(--black);
+  border: 1px solid var(--white);
   cursor: pointer;
   white-space: nowrap;
 }
 
 .beat-alert-btn:hover {
-  background: #333;
+  background: #ccc;
 }
 
 .beat-alert-btn:disabled {
@@ -1762,9 +1769,9 @@ button {
   font-weight: 700;
   font-family: inherit;
   text-transform: uppercase;
-  background: var(--black);
+  background: #1a1a1a;
   color: var(--white);
-  border: 1px solid var(--black);
+  border: 1px solid #444;
   cursor: default;
   letter-spacing: 0.1em;
   text-align: center;
@@ -1880,7 +1887,7 @@ button {
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.3em;
-  color: var(--black);
+  color: var(--white);
   margin: 15px auto 12px auto;
   text-align: center;
 }
@@ -1899,10 +1906,10 @@ button {
 }
 
 .ken-benefits__item {
-  border: 1px solid var(--black);
+  border: 1px solid #333;
   padding: 8px 14px;
-  background: var(--white);
-  color: var(--black);
+  background: #0d0d0d;
+  color: var(--white);
   transition: background 0.15s ease, color 0.15s ease;
   box-sizing: border-box;
   max-width: 100%;
@@ -1911,8 +1918,8 @@ button {
 }
 
 .ken-benefits__item--active {
-  background: var(--black);
-  color: var(--white);
+  background: var(--white);
+  color: var(--black);
 }
 
 

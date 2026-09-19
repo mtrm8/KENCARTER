@@ -59,7 +59,7 @@ The Buyer agrees to:
 
 ### 8. Delivery Confirmation
 Upon successful payment verification and delivery:
-- The Buyer will receive: **WAV/MP3 files (untagged) + Exclusive_License.txt**
+- The Buyer will receive: **WAV files (untagged) + Exclusive_License.txt**
 - The beat will be **permanently removed** from the Ken Carter beat store
 - The Buyer assumes **full ownership** of the master recording
 
