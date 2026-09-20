@@ -430,8 +430,11 @@ function renderCryptoTotal() {
       amount = qty.toFixed(usd < 5 ? 2 : 6);
     }
   }
-  chip.innerHTML =
-    asset.icon + `<span>${amount != null ? `${prefix} ${amount} ${asset.sym}` : "\u2014 " + asset.sym}</span>`;
+  let outer = asset.icon + `<span>${amount != null ? `${prefix} ${amount} ${asset.sym}` : "\u2014 " + asset.sym}</span>`;
+  if (asset.sym === "KEN") {
+    outer = asset.icon + `<span>= $${total.toFixed(2)}</span><span class="crypto-chip__badge">15% OFF</span>`;
+  }
+  chip.innerHTML = outer;
   chip.hidden = false;
   chip.classList.remove("is-flash");
   void chip.offsetWidth;
