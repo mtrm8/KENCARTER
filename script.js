@@ -2067,9 +2067,6 @@ if (walletModal) {
 
     sigVideo.addEventListener("ended", () => {
       sigVideo.pause();
-      if (!isNaN(sigVideo.duration)) {
-        sigVideo.currentTime = sigVideo.duration;
-      }
     });
   }
 })();
