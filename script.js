@@ -377,20 +377,51 @@ function activeAsset() {
   return payAssetSym ? ASSETS[payAssetSym] : null;
 }
 
+const JUPITER_API = "https://price.jup.ag/v4/price?ids=" + KEN_MINT;
+
+function fetchKenPrice() {
+  fetch(JUPITER_API)
+    .then((r) => r.json())
+    .then((d) => {
+      const p = d && d.data && d.data[KEN_MINT] && d.data[KEN_MINT].price;
+      if (typeof p === "number" && p > 0) {
+        CRYPTO_PRICES.ken = p;
+        renderCryptoTotal();
+      }
+    })
+    .catch(() => {});
+}
+
 function renderCryptoTotal() {
   const chip = $("t-crypto");
   if (!chip) return;
   const asset = activeAsset();
   if (!asset) {
     chip.hidden = true;
+    chip.classList.remove("is-flash");
     return;
   }
   const { total } = totals();
   const usd = CRYPTO_PRICES[asset.id];
+  const stable = asset.sym === "USDT" || asset.sym === "USDC";
+  let prefix = "";
+  let amount = null;
+  if (usd && usd > 0) {
+    const qty = total / usd;
+    if (stable && Math.abs(usd - 1) < 0.02) {
+      prefix = "=";
+      amount = total.toFixed(2);
+    } else {
+      prefix = "\u2248";
+      amount = qty.toFixed(usd < 5 ? 2 : 6);
+    }
+  }
   chip.innerHTML =
-    asset.icon +
-    (usd ? `<span>(\u2248 ${(total / usd).toFixed(usd < 5 ? 2 : 6)} ${asset.sym})</span>` : "");
+    asset.icon + `<span>${amount != null ? `${prefix} ${amount} ${asset.sym}` : "\u2014 " + asset.sym + " AVAIL AT CHECKOUT"}</span>`;
   chip.hidden = false;
+  chip.classList.remove("is-flash");
+  void chip.offsetWidth;
+  chip.classList.add("is-flash");
 }
 
 function selectPayment(value) {
@@ -431,7 +462,7 @@ function buildPaygrid() {
 }
 
 function startBtc() {
-  const update = () =>
+  const update = () => {
     fetch(BTC_ENDPOINT)
       .then((r) => r.json())
       .then((d) => {
@@ -443,6 +474,8 @@ function startBtc() {
         renderCryptoTotal();
       })
       .catch(() => {});
+    fetchKenPrice();
+  };
   update();
   setInterval(update, 60000);
 }

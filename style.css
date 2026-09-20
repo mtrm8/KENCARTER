@@ -1384,21 +1384,46 @@ button {
   pointer-events: none;
 }
 
+.totals__grand dd {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
 .totals__crypto {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  margin-left: 8px;
+  gap: 6px;
   font-size: 10px;
+  font-weight: 700;
   letter-spacing: 0.06em;
-  color: var(--black);
-  vertical-align: middle;
+  color: var(--white);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 4px 9px;
+  border-radius: 999px;
 }
 
 .totals__crypto svg {
   width: 13px;
   height: 13px;
   display: block;
+}
+
+@keyframes totals-flash {
+  from {
+    opacity: 0.25;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.totals__crypto.is-flash {
+  animation: totals-flash 0.35s ease;
 }
 
 .order-form__error {
