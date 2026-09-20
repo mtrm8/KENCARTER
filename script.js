@@ -540,8 +540,10 @@ function cardInner(beat, opts = {}, index = 0) {
           <div class="card__price">${money(PRICE)}</div>
           <div class="btc-price"></div>
         </div>
-        ${notifyForm}
-        <button class="card__btn" disabled>SOON</button>
+        <div class="card__actions">
+          ${notifyForm}
+          <button class="card__btn" disabled>SOON</button>
+        </div>
       </div>`;
   }
 
