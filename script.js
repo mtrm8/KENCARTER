@@ -169,17 +169,20 @@ function tickS02(now = Date.now()) {
   if (!el) return;
   const kicker = $("s02-kicker");
 
-  if (now < Date.parse(S02_OPEN_AT)) {
+  const showBanner = () => {
     if (banner) banner.style.display = "";
+  };
+
+  if (now < Date.parse(S02_OPEN_AT)) {
+    showBanner();
     if (kicker) kicker.textContent = "SEASON 02 \u2014 NEXT DROP IN";
     const remaining = Date.parse(S02_OPEN_AT) - now;
     el.textContent = remaining <= 0 ? "OPENING\u2026" : formatRemaining(remaining);
     return;
   }
 
-  if (banner) banner.style.display = "none";
-
   if (now < Date.parse(S02_FINAL_DROP_AT)) {
+    showBanner();
     if (kicker) kicker.textContent = "SEASON 02 \u2014 FINAL DROP IN";
     const remaining = Date.parse(S02_FINAL_DROP_AT) - now;
     el.textContent = remaining <= 0 ? "FINAL DROP READY" : formatRemaining(remaining);
@@ -187,12 +190,14 @@ function tickS02(now = Date.now()) {
   }
 
   if (now < Date.parse(S02_CLOSE_AT)) {
+    showBanner();
     if (kicker) kicker.textContent = "SEASON 02 \u2014 CLOSES IN";
     const remaining = Date.parse(S02_CLOSE_AT) - now;
     el.textContent = remaining <= 0 ? "EXPIRED" : formatRemaining(remaining);
     return;
   }
 
+  if (banner) banner.style.display = "none";
   if (kicker) kicker.textContent = "SEASON 02 HAS CLOSED";
   el.textContent = "ARCHIVED";
 }
@@ -2063,12 +2068,6 @@ if (walletModal) {
     sigVideo.addEventListener("ended", () => {
       sigVideo.pause();
       if (!isNaN(sigVideo.duration)) {
-        sigVideo.currentTime = sigVideo.duration;
-      }
-    });
-    sigVideo.addEventListener("timeupdate", () => {
-      if (sigVideo.duration && sigVideo.currentTime >= sigVideo.duration - 0.05) {
-        sigVideo.pause();
         sigVideo.currentTime = sigVideo.duration;
       }
     });
