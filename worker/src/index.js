@@ -79,16 +79,23 @@ const json = (env, obj, status = 200) =>
   });
 
 async function handleKenPrice(env) {
-  try {
-    const res = await fetch("https://price.jup.ag/v4/price?ids=" + KEN_MINT, {
-      headers: { "Accept": "application/json" }
-    });
-    const body = await res.json().catch(() => null);
-    const usd = Number(body && body.data && body.data[KEN_MINT] && body.data[KEN_MINT].price);
-    return json(env, { usd: usd > 0 ? usd : null });
-  } catch (err) {
-    return json(env, { usd: null });
+  const jupUrls = [
+    "https://price.jup.ag/v4/price?ids=" + KEN_MINT,
+    "https://api.jup.ag/price/v2?ids=" + KEN_MINT
+  ];
+  for (const u of jupUrls) {
+    try {
+      const res = await fetch(u, { headers: { "Accept": "application/json" } });
+      if (!res.ok) continue;
+      const body = await res.json().catch(() => null);
+      const p = body && body.data && body.data[KEN_MINT];
+      const usd = Number(p && p.price);
+      if (usd > 0) return json(env, { usd, source: "jup" });
+    } catch (err) { /* try next source */ }
   }
+  const fixed = Number(env.KEN_USD_PRICE);
+  if (fixed > 0) return json(env, { usd: fixed, source: "config" });
+  return json(env, { usd: null });
 }
 
 const orderKey = (id) => "order:" + id;
