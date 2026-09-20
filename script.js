@@ -2041,6 +2041,23 @@ if (walletModal) {
 
   const sigVideo = document.querySelector(".signature-video");
   if (sigVideo) {
+    sigVideo.muted = true;
+    sigVideo.playsInline = true;
+    sigVideo.setAttribute("playsinline", "");
+    sigVideo.setAttribute("webkit-playsinline", "");
+    const attemptPlay = () => {
+      sigVideo.play().catch(() => {
+        const resumePlay = () => {
+          sigVideo.play().catch(() => {});
+          window.removeEventListener("touchstart", resumePlay);
+          window.removeEventListener("click", resumePlay);
+        };
+        window.addEventListener("touchstart", resumePlay, { once: true });
+        window.addEventListener("click", resumePlay, { once: true });
+      });
+    };
+    attemptPlay();
+
     sigVideo.addEventListener("ended", () => {
       sigVideo.pause();
       if (!isNaN(sigVideo.duration)) {

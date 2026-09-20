@@ -366,6 +366,7 @@ button {
   color: var(--white);
   display: flex;
   flex-direction: column;
+  height: 100%;
   border-right: 1px solid #222;
   border-bottom: 1px solid #222;
   touch-action: manipulation;
@@ -1546,7 +1547,7 @@ button {
   margin-top: 10px;
   font-size: 13px;
   font-weight: 700;
-  color: var(--white);
+  color: var(--gray);
 }
 
 .card--locked .btc-price {
