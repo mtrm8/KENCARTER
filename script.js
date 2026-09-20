@@ -432,7 +432,25 @@ function renderCryptoTotal() {
   }
   let outer = asset.icon + `<span>${amount != null ? `${prefix} ${amount} ${asset.sym}` : "\u2014 " + asset.sym}</span>`;
   if (asset.sym === "KEN") {
-    outer = asset.icon + `<span>= $${total.toFixed(2)}</span><span class="crypto-chip__badge">15% OFF</span>`;
+    const badge = isKenHolder
+      ? '<span class="crypto-chip__badge">15% OFF</span>'
+      : '<span class="crypto-chip__badge crypto-chip__badge--prompt">'
+          + (connectedWalletAddress ? "HOLD KEN \u00b7 15% OFF" : "CONNECT WALLET \u00b7 15% OFF")
+          + '</span>';
+    chip.onclick = () => openWalletModal();
+  chip.classList.add("crypto-chip--actionable");
+  outer = asset.icon + `<span>= $${total.toFixed(2)}</span>` + badge;
+    if (!isKenHolder) {
+      chip.title = connectedWalletAddress ? "Hold KEN in your wallet to unlock 15% off" : "Connect your wallet to unlock 15% off";
+      chip.classList.add("crypto-chip--actionable");
+      if (!chip.dataset.promptBound) {
+        chip.dataset.promptBound = "1";
+        chip.addEventListener("click", () => openWalletModal());
+      }
+    } else {
+      chip.classList.remove("crypto-chip--actionable");
+      chip.title = "";
+    }
   }
   chip.innerHTML = outer;
   chip.hidden = false;
@@ -823,8 +841,8 @@ function totals() {
   const freeCount = [...freePicks].filter((id) => selected.has(id)).length;
   const discount = freeCount * PRICE;
   let total = Math.max(0, subtotal - discount);
-  if (payAssetSym === "KEN") {
-    total = Math.max(0, total * 0.85); // 15% off when paying with KEN
+  if (payAssetSym === "KEN" && isKenHolder) {
+    total = Math.max(0, total * 0.85); // only when wallet holds KEN
   }
   return { n, exclusiveN: exclusiveCount, basicCount, exclusiveCount, subtotal, freeCount, discount, total };
 }

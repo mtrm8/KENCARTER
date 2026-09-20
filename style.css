@@ -2009,3 +2009,32 @@ button {
 }
 
 
+
+
+/* KEN payment chip badge (15% OFF / CONNECT WALLET prompt) */
+.crypto-chip__badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #16a34a;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.crypto-chip__badge--prompt {
+  background: transparent;
+  color: #fbbf24;
+  border: 1px solid rgba(251,191,36,0.65);
+}
+.crypto-chip--actionable {
+  cursor: pointer;
+}
+.crypto-chip--actionable:hover,
+.crypto-chip--actionable:focus-visible {
+  filter: brightness(1.12);
+}
