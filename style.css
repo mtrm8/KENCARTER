@@ -214,6 +214,28 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
+.signature-section {
+  width: 100%;
+  background: var(--black);
+  padding: 8px 16px;
+  text-align: center;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.signature-video {
+  display: block;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+  aspect-ratio: 2586 / 1080;
+  object-fit: contain;
+  background: var(--black);
+  border: none;
+  outline: none;
+}
+
 .card--censored .card__media img {
   filter: blur(14px) grayscale(1) brightness(0.55);
   transform: scale(1.08);
@@ -418,16 +440,6 @@ button {
   flex: 1;
 }
 
-.card__name {
-  font-size: 13px;
-  font-weight: 700;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-  white-space: normal;
-}
-
 .brand-banner-box {
   text-align: center;
   font-size: 10px;
@@ -446,12 +458,11 @@ button {
   font-size: 13px;
   font-weight: 700;
   display: flex;
-  align-items: flex-start;
+  align-items: baseline;
   justify-content: space-between;
+  flex-wrap: nowrap;
   gap: 8px;
-  white-space: normal;
-  word-break: break-word;
-  overflow-wrap: break-word;
+  white-space: nowrap;
 }
 
 .card__name > span {
@@ -464,6 +475,8 @@ button {
 }
 
 .card__title-link {
+  display: inline-flex;
+  align-items: baseline;
   min-width: 0;
   flex: 1 1 auto;
   white-space: nowrap;
@@ -524,6 +537,7 @@ button {
 .card__name-alt {
   font-weight: 400;
   color: var(--gray);
+  white-space: nowrap;
 }
 
 .card__specs {
@@ -718,6 +732,8 @@ button {
   gap: 10px;
   text-align: center;
   padding: 16px;
+  z-index: 5;
+  pointer-events: none;
 }
 
 .card__countdown-label {
@@ -1454,7 +1470,18 @@ button {
     min-height: 2.6em;
   }
   .card__name {
-    font-size: 11px;
+    font-size: 10px;
+  }
+  .drop-banner__timer {
+    font-size: clamp(18px, 6vw, 46px);
+  }
+  .card__countdown {
+    padding: 10px;
+  }
+  .card__countdown-timer {
+    max-width: 100%;
+    font-size: 15px;
+    padding: 6px 10px;
   }
   .cart-items li {
     flex-wrap: wrap;
