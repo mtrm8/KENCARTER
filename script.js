@@ -381,6 +381,10 @@ const JUPITER_API = "https://price.jup.ag/v4/price?ids=" + KEN_MINT;
 
 function fetchKenPrice() {
   const sources = [
+    fetch(WORKER_URL.replace(/\/+$/, "") + "/api/ken-price")
+      .then((r) => r.json())
+      .then((d) => (d && d.usd) || null)
+      .catch(() => null),
     fetch("/api/ken-price")
       .then((r) => r.json())
       .then((d) => (d && d.usd) || null)
@@ -393,8 +397,8 @@ function fetchKenPrice() {
       })
       .catch(() => null)
   ];
-  Promise.all(sources).then(([via, vj]) => {
-    const price = via || vj;
+  Promise.all(sources).then(([via, vj, vj2]) => {
+    const price = via || vj || vj2;
     if (price > 0) {
       CRYPTO_PRICES.ken = price;
       renderCryptoTotal();
