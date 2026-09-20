@@ -904,9 +904,12 @@ function render() {
   const hint = $("free-hint");
   const cap = freeCap();
   const missing = cap - freePicks.size;
+  const moreAvailable = CATALOG.some(
+    (b) => isReleased(b) && !isSoldOut(b) && !selected.has(b.id) && !exclusiveSelected.has(b.id)
+  );
   if (n === 0) {
     hint.hidden = true;
-  } else if (selected.size % 3 === 2) {
+  } else if (selected.size % 3 === 2 && moreAvailable) {
     hint.hidden = false;
     hint.textContent = "ONE MORE \u2014 YOUR NEXT BEAT COMES FREE.";
   } else if (missing > 0) {

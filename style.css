@@ -395,6 +395,8 @@ button {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  -webkit-user-drag: none;
+  user-select: none;
 }
 
 .card__tag {
@@ -707,6 +709,8 @@ button {
 .card--locked .card__media img {
   filter: grayscale(100%) blur(16px);
   transform: scale(1.08);
+  -webkit-user-drag: none;
+  user-select: none;
 }
 .card--locked .card__name,
 .card--locked .card__name-alt,
