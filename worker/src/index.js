@@ -78,6 +78,19 @@ const json = (env, obj, status = 200) =>
     headers: { "Content-Type": "application/json", ...corsHeaders(env) }
   });
 
+async function handleKenPrice(env) {
+  try {
+    const res = await fetch("https://price.jup.ag/v4/price?ids=" + KEN_MINT, {
+      headers: { "Accept": "application/json" }
+    });
+    const body = await res.json().catch(() => null);
+    const usd = Number(body && body.data && body.data[KEN_MINT] && body.data[KEN_MINT].price);
+    return json(env, { usd: usd > 0 ? usd : null });
+  } catch (err) {
+    return json(env, { usd: null });
+  }
+}
+
 const orderKey = (id) => "order:" + id;
 const ttl = () => ({ expirationTtl: 60 * 60 * 24 * 7 });
 const notifyKey = (beatId) => "notify-sub:" + beatId;      // subscribed emails per beat
@@ -1874,6 +1887,7 @@ export default {
       if (request.method === "GET" && url.pathname === "/api/catalog") return await handleCatalog(env);
       if (request.method === "GET" && url.pathname === "/api/status") return await handleStatus(url, env);
       if (request.method === "GET" && url.pathname === "/api/mins") return await handleMins(url, env);
+      if (request.method === "GET" && url.pathname === "/api/ken-price") return await handleKenPrice(env);
       if (request.method === "POST" && url.pathname === "/api/ipn") return await handleIpn(request, env, ctx);
       // Liveness probe (browser/manual GET) — confirms the endpoint is deployed.
       if (request.method === "GET" && url.pathname === "/api/ipn") {

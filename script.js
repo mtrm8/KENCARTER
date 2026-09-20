@@ -380,16 +380,26 @@ function activeAsset() {
 const JUPITER_API = "https://price.jup.ag/v4/price?ids=" + KEN_MINT;
 
 function fetchKenPrice() {
-  fetch(JUPITER_API)
-    .then((r) => r.json())
-    .then((d) => {
-      const p = d && d.data && d.data[KEN_MINT] && d.data[KEN_MINT].price;
-      if (typeof p === "number" && p > 0) {
-        CRYPTO_PRICES.ken = p;
-        renderCryptoTotal();
-      }
-    })
-    .catch(() => {});
+  const sources = [
+    fetch("/api/ken-price")
+      .then((r) => r.json())
+      .then((d) => (d && d.usd) || null)
+      .catch(() => null),
+    fetch(JUPITER_API)
+      .then((r) => r.json())
+      .then((d) => {
+        const p = Number(d && d.data && d.data[KEN_MINT] && d.data[KEN_MINT].price);
+        return p > 0 ? p : null;
+      })
+      .catch(() => null)
+  ];
+  Promise.all(sources).then(([via, vj]) => {
+    const price = via || vj;
+    if (price > 0) {
+      CRYPTO_PRICES.ken = price;
+      renderCryptoTotal();
+    }
+  });
 }
 
 function renderCryptoTotal() {
@@ -417,7 +427,7 @@ function renderCryptoTotal() {
     }
   }
   chip.innerHTML =
-    asset.icon + `<span>${amount != null ? `${prefix} ${amount} ${asset.sym}` : "\u2014 " + asset.sym + " AVAIL AT CHECKOUT"}</span>`;
+    asset.icon + `<span>${amount != null ? `${prefix} ${amount} ${asset.sym}` : "\u2014 " + asset.sym}</span>`;
   chip.hidden = false;
   chip.classList.remove("is-flash");
   void chip.offsetWidth;
@@ -806,8 +816,8 @@ function totals() {
   const freeCount = [...freePicks].filter((id) => selected.has(id)).length;
   const discount = freeCount * PRICE;
   let total = Math.max(0, subtotal - discount);
-  if (payAssetSym === "KEN" && isKenHolder) {
-    total = Math.max(0, total * 0.85); // 15% discount only for verified KEN token holders
+  if (payAssetSym === "KEN") {
+    total = Math.max(0, total * 0.85); // 15% off when paying with KEN
   }
   return { n, exclusiveN: exclusiveCount, basicCount, exclusiveCount, subtotal, freeCount, discount, total };
 }
