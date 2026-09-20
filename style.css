@@ -508,7 +508,7 @@ button {
 .card__youtube-link {
   display: inline-flex;
   align-items: center;
-  color: var(--black);
+  color: #ffffff;
   transition: opacity 0.2s ease, transform 0.2s ease;
   flex-shrink: 0;
 }
