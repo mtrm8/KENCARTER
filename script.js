@@ -2121,10 +2121,8 @@ if (walletModal) {
   if (sigVideo) {
     sigVideo.muted = true;
     sigVideo.playsInline = true;
-    sigVideo.loop = true;
     sigVideo.setAttribute("playsinline", "");
     sigVideo.setAttribute("webkit-playsinline", "");
-    sigVideo.setAttribute("loop", "");
     const attemptPlay = () => {
       sigVideo.play().catch(() => {
         const resumePlay = () => {
