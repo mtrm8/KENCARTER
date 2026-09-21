@@ -234,6 +234,7 @@ button {
   background: var(--black);
   border: none;
   outline: none;
+  pointer-events: none;
 }
 
 .card--censored .card__media img {
