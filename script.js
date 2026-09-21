@@ -2121,8 +2121,10 @@ if (walletModal) {
   if (sigVideo) {
     sigVideo.muted = true;
     sigVideo.playsInline = true;
+    sigVideo.loop = true;
     sigVideo.setAttribute("playsinline", "");
     sigVideo.setAttribute("webkit-playsinline", "");
+    sigVideo.setAttribute("loop", "");
     const attemptPlay = () => {
       sigVideo.play().catch(() => {
         const resumePlay = () => {
@@ -2135,9 +2137,8 @@ if (walletModal) {
       });
     };
     attemptPlay();
-
-    sigVideo.addEventListener("ended", () => {
-      sigVideo.pause();
+    window.addEventListener("load", () => {
+      sigVideo.play().catch(() => {});
     });
   }
 })();
