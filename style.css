@@ -72,13 +72,15 @@ button {
 }
 
 .ticker__track {
-  display: inline-flex;
+  display: flex;
+  width: max-content;
   white-space: nowrap;
-  animation: ticker 22s linear infinite;
+  animation: ticker 25s linear infinite;
   will-change: transform;
 }
 
 .ticker__track span {
+  display: inline-block;
   padding-right: 2em;
   white-space: nowrap;
   flex-shrink: 0;
@@ -238,6 +240,16 @@ button {
   background: var(--black);
   border: none;
   outline: none;
+  pointer-events: none !important;
+}
+
+.signature-video::-webkit-media-controls,
+.signature-video::-webkit-media-controls-panel,
+.signature-video::-webkit-media-controls-play-button,
+.signature-video::-webkit-media-controls-start-playback-button,
+.signature-video::-webkit-media-controls-overlay-play-button {
+  display: none !important;
+  opacity: 0 !important;
   pointer-events: none !important;
 }
 

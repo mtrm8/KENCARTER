@@ -2123,20 +2123,30 @@ if (walletModal) {
     sigVideo.playsInline = true;
     sigVideo.setAttribute("playsinline", "");
     sigVideo.setAttribute("webkit-playsinline", "");
+    sigVideo.setAttribute("muted", "");
     const attemptPlay = () => {
-      sigVideo.play().catch(() => {
-        const resumePlay = () => {
-          sigVideo.play().catch(() => {});
-          window.removeEventListener("touchstart", resumePlay);
-          window.removeEventListener("click", resumePlay);
-        };
-        window.addEventListener("touchstart", resumePlay, { once: true });
-        window.addEventListener("click", resumePlay, { once: true });
-      });
+      const p = sigVideo.play();
+      if (p !== undefined) {
+        p.catch(() => {
+          const resumePlay = () => {
+            sigVideo.play().catch(() => {});
+            window.removeEventListener("touchstart", resumePlay);
+            window.removeEventListener("click", resumePlay);
+          };
+          window.addEventListener("touchstart", resumePlay, { once: true });
+          window.addEventListener("click", resumePlay, { once: true });
+        });
+      }
     };
     attemptPlay();
     window.addEventListener("load", () => {
-      sigVideo.play().catch(() => {});
+      attemptPlay();
+    });
+    sigVideo.addEventListener("ended", () => {
+      sigVideo.pause();
+      if (sigVideo.duration) {
+        sigVideo.currentTime = sigVideo.duration;
+      }
     });
   }
 })();
