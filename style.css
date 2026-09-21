@@ -73,16 +73,20 @@ button {
 
 .ticker__track {
   display: inline-flex;
+  white-space: nowrap;
   animation: ticker 22s linear infinite;
+  will-change: transform;
 }
 
 .ticker__track span {
   padding-right: 2em;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 @keyframes ticker {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 
 .header {
@@ -234,7 +238,7 @@ button {
   background: var(--black);
   border: none;
   outline: none;
-  pointer-events: none;
+  pointer-events: none !important;
 }
 
 .card--censored .card__media img {
